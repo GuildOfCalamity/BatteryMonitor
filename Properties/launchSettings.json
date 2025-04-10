@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "BatteryMonitor (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "BatteryMonitor (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
