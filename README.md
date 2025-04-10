@@ -1,6 +1,6 @@
 ## 💻 Battery Monitor - WinUI3
 
-![Icon](./Assets/AppIcon.png)
+![Icon](Assets/AppIcon.png)
 
 ## 📝 v1.0.0.0 - April 2025
 
@@ -19,11 +19,11 @@
 
 > Charging (updated screenshot coming soon)
 
-![Charging](./Assets/Screenshot1.png)
+![Charging](Assets/Screenshot1.png)
 
 > Discharging (updated screenshot coming soon)
 
-![Discharging](./Assets/Screenshot2.png)
+![Discharging](Assets/Screenshot2.png)
 
 ## 🧾 License/Warranty
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish and distribute copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
