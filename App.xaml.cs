@@ -28,11 +28,11 @@ using Windows.UI.ViewManagement;
 namespace BatteryMonitor;
 
 /// <summary>
-/// There's some activation and jumplist goodies included below.
+/// Entry point to our WinUI3 application.
 /// </summary>
 public partial class App : Application
 {
-    #region [Props]
+    #region [Properties]
     // NOTE: If you would like to deploy this app as "Packaged", then open the csproj and change
     //  <WindowsPackageType>None</WindowsPackageType> to <WindowsPackageType>MSIX</WindowsPackageType>
     // https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/#advantages-and-disadvantages-of-packaging-your-app
@@ -43,8 +43,8 @@ public partial class App : Application
 #endif
 
     public static Window? m_window;
-    public static int m_width { get; set; } = 800;
-    public static int m_height { get; set; } = 550;
+    public static int m_width { get; set; } = 473;
+    public static int m_height { get; set; } = 235;
     public static bool IsClosing { get; set; } = false;
     public static string BaseFolder { get; private set; }
     public static FrameworkElement? MainRoot { get; set; }
@@ -165,8 +165,13 @@ public partial class App : Application
             CloseExistingInstanceAlt();
         }
         
-        GatherEnvironment();
-
+        Task.Run(() => GatherEnvironment())
+            .ContinueTaskWithActions(
+            onSuccess: null, 
+            onCanceled: null, 
+            onFaulted: () => { DebugLog("Failed to gather environment vars."); 
+        });
+        
         this.InitializeComponent();
 
         // https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.application.focusvisualkind?view=windows-app-sdk-1.3
@@ -175,34 +180,6 @@ public partial class App : Application
         AssemblyReferences = Extensions.GatherReferenceAssemblies(true);
 
         bool areWeTheRealDeal = ApiInformation.IsPropertyPresent("Microsoft.UI.Dispatching.DispatcherQueue", "HasThreadAccess");
-
-        #region [DataReader/DataWriter Test]
-        _ = Task.Run(async () =>
-        {
-            /*
-            [DateTime]
-                Represents a point in time without any information about the time zone. 
-                It's a naive representation of a date and time.
-            
-            [DateTimeOffset]
-                Represents a point in time with an offset from Coordinated Universal Time (UTC). 
-                It captures both the date and time, as well as the time zone information.
-            */
-
-            var tzi = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-            DateTimeOffset dto = new DateTimeOffset(DateTime.Now, tzi.GetUtcOffset(DateTime.Now));
-
-            await Extensions.WriteDTOUsingDataWriterAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "StreamedFileAsync.txt"), dto);
-            await Task.Delay(100);
-            dto = await Extensions.ReadDTOUsingDataReaderAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "StreamedFileAsync.txt"));
-            if (dto == DateTimeOffset.MinValue)
-                Debug.WriteLine($"[FAILED]");
-
-            var bytes = await Extensions.ReadBytesUsingDataReaderAsync(System.IO.Path.Combine(AppContext.BaseDirectory, "StreamedFileAsync.txt"));
-            var xfer = await Extensions.TransferDataInMemoryStream("this,is,some,tokenized,values,to,test,in,memory,stream", ",");
-            Debug.WriteLine($"{xfer}");
-        });
-        #endregion
     }
 
     /// <summary>
@@ -405,8 +382,8 @@ public partial class App : Application
                     if (!IsWindowMaximized && Profile is not null)
                     {
                         // Update width and height for profile settings.
-                        Profile!.windowHeight = s.Size.Height;
-                        Profile!.windowWidth = s.Size.Width;
+                        Profile!.windowWidth  = 473; // windowWidth = s.Size.Width;
+                        Profile!.windowHeight = 235; // windowHeight = s.Size.Height;
                     }
                 }
 
@@ -531,7 +508,7 @@ public partial class App : Application
     {
         if (App.WindowHandle != IntPtr.Zero)
         {
-            //_ = SetForegroundWindow(App.WindowHandle);
+            _ = SetForegroundWindow(App.WindowHandle);
         }
 
         if (AppWin is not null && AppWin.Presenter is not null && AppWin.Presenter is OverlappedPresenter op)
@@ -690,6 +667,9 @@ public partial class App : Application
 
     [DllImport("user32.dll")]
     static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lpRect, MonitorEnumProc callback, int dwData);
+
+    [DllImport("user32.dll")]
+    static extern IntPtr SetForegroundWindow(IntPtr hWnd);
     #endregion
 
     #region [Reflection Helpers]

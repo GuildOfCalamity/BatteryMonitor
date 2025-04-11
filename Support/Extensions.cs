@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -71,6 +72,356 @@ public static class Extensions
         minutesRemaining %= 60;
 
         return $"{hoursRemaining} hours & {minutesRemaining} minutes ";
+    }
+
+    public static bool ContainsUnicode(this string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return false;
+
+        return text.Any(c => (int)c > 127);
+    }
+
+    /// <summary>
+    /// Home-brew parallel invoke that will block while actions run.
+    /// </summary>
+    /// <param name="actions">array of <see cref="Action"/>s</param>
+    public static void ParallelInvoke(params Action[] actions)
+    {
+        if (actions.Length < 10)
+        {
+            IEnumerable<Task>? tasks = from action in actions select Task.Run(action);
+            Task.WaitAll(tasks.ToArray());
+        }
+        else // The overhead for Task can add up once you have 100s of actions.
+        {
+            Parallel.ForEach(actions, (action) => { action.Invoke(); });
+        }
+    }
+
+    /// <summary>
+    /// Home-brew parallel invoke that will not block while actions run.
+    /// </summary>
+    /// <param name="actions">array of <see cref="Action"/>s</param>
+    public static void ParallelInvokeAndForget(params Action[] action)
+    {
+        action.ForEach(a =>
+        {
+            try
+            {
+                ThreadPool.QueueUserWorkItem((obj) => { a.Invoke(); });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] ParallelInvokeAndForget: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// An unoptimized, home-brew parallel ForEach implementation.
+    /// </summary>
+    public static void ParallelForEach<T>(IEnumerable<T> source, Action<T> action)
+    {
+        IEnumerable<Task>? tasks = from item in source select Task.Run(() => action(item));
+        Task.WaitAll(tasks.ToArray());
+    }
+
+    /// <summary>
+    /// An optimized, home-brew parallel ForEach implementation.
+    /// Creates branched execution based on available processors.
+    /// </summary>
+    public static void ParallelForEachUsingEnumerator<T>(IEnumerable<T> source, Action<T> action, Action<Exception>? onError)
+    {
+        using IEnumerator<T> e = source.GetEnumerator();
+        IEnumerable<Task>? tasks = from i in Enumerable.Range(0, Environment.ProcessorCount)
+            select Task.Run(() =>
+            {
+                while (true)
+                {
+                    T item;
+                    lock (e)
+                    {
+                        if (!e.MoveNext()) { return; }
+                        item = e.Current;
+                    }
+                    #region [Must stay outside locking scope, or defeats the purpose of parallelism]
+                    try
+                    {
+                        action(item); 
+                    }
+                    catch (Exception ex)
+                    {
+                        onError?.Invoke(ex);
+                    }
+                    #endregion
+                }
+            });
+        Task.WaitAll(tasks.ToArray());
+    }
+
+    /// <summary>
+    /// An optimized, home-brew parallel ForEach implementation.
+    /// Creates branched execution based on available processors.
+    /// </summary>
+    public static void ParallelForEachUsingPartitioner<T>(IEnumerable<T> source, Action<T> action, Action<Exception>? onError, EnumerablePartitionerOptions options = EnumerablePartitionerOptions.NoBuffering)
+    {
+        //IList<IEnumerator<T>> partitions = Partitioner.Create(source, options).GetPartitions(Environment.ProcessorCount);
+        IEnumerable<Task>? tasks = 
+            from partition 
+            in Partitioner.Create(source, options).GetPartitions(Environment.ProcessorCount)
+            select Task.Run(() =>
+            {
+                using (partition) // partitions are disposable!
+                {
+                    while (partition.MoveNext())
+                    {
+                        try
+                        {
+                            action(partition.Current);
+                        }
+                        catch (Exception ex)
+                        {
+                            onError?.Invoke(ex);
+                        }
+                    }
+                }
+            });
+        Task.WaitAll(tasks.ToArray());
+    }
+
+    /// <summary>
+    /// An optimized, home-brew parallel ForEach implementation.
+    /// </summary>
+    public static void ParallelForEachUsingPartitioner<T>(IList<T> list, Action<T> action, Action<Exception>? onError, EnumerablePartitionerOptions options = EnumerablePartitionerOptions.NoBuffering)
+    {
+        //IList<IEnumerator<T>> partitions = Partitioner.Create(list, options).GetPartitions(Environment.ProcessorCount);
+        IEnumerable<Task>? tasks =
+            from partition
+            in Partitioner.Create(list, options).GetPartitions(Environment.ProcessorCount)
+            select Task.Run(() =>
+            {
+                using (partition) // partitions are disposable!
+                {
+                    while (partition.MoveNext())
+                    {
+                        try
+                        {
+                            action(partition.Current);
+                        }
+                        catch (Exception ex)
+                        {
+                            onError?.Invoke(ex);
+                        }
+                    }
+                }
+            });
+        Task.WaitAll(tasks.ToArray());
+    }
+
+
+    /// <summary>
+    /// If not using a console app, set <paramref name="consoleApp"/> to false.
+    /// </summary>
+    /// <param name="task"><see cref="Task"/></param>
+    /// <param name="onSuccess"><see cref="Action"/> to perform if <see cref="TaskContinuationOptions.OnlyOnRanToCompletion"/></param>
+    /// <param name="onCanceled"><see cref="Action"/> to perform if <see cref="TaskContinuationOptions.OnlyOnCanceled"/></param>
+    /// <param name="onFaulted"><see cref="Action"/> to perform if <see cref="TaskContinuationOptions.OnlyOnFaulted"/></param>
+    public static void ContinueTaskWithActions(this Task task, Action? onSuccess, Action? onCanceled, Action? onFaulted, bool consoleApp = false)
+    {
+        #region [ContinueWith-Success]
+        task.ContinueWith(task => { onSuccess?.Invoke(); },
+        CancellationToken.None,
+        TaskContinuationOptions.OnlyOnRanToCompletion,
+        consoleApp ? TaskScheduler.Current : TaskScheduler.FromCurrentSynchronizationContext());
+        #endregion
+
+        #region [ContinueWith-Canceled]
+        task.ContinueWith(task => { onCanceled?.Invoke(); },
+        CancellationToken.None,
+        TaskContinuationOptions.OnlyOnCanceled,
+        consoleApp ? TaskScheduler.Current : TaskScheduler.FromCurrentSynchronizationContext());
+        #endregion
+
+        #region [ContinueWith-Faulted]
+        task.ContinueWith(task => { onFaulted?.Invoke(); },
+        CancellationToken.None,
+        TaskContinuationOptions.OnlyOnFaulted,
+        consoleApp ? TaskScheduler.Current : TaskScheduler.FromCurrentSynchronizationContext());
+        #endregion
+    }
+
+    /// <summary>
+    /// Func<string, int> getUserId = (id) => { ... };
+    /// int userId = getUserId.Retry(3)("Email");
+    /// </summary>
+    public static Func<TArg, TResult> Retry<TArg, TResult>(this Func<TArg, TResult> func, int maxRetry, int retryDelay = 2000)
+    {
+        return (arg) => 
+        {
+            int tryCount = 0;
+            while (true)
+            {
+                try
+                {
+                    return func(arg);
+                }
+                catch (Exception ex)
+                {
+                    if (++tryCount > maxRetry)
+                    {
+                        throw new Exception($"Retry attempts exhausted: {ex.Message}", ex);
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[WARNING] Failed: {ex.Message}");
+                        Debug.WriteLine($"[INFO] Attempts left: {maxRetry - tryCount}");
+                        Thread.Sleep(retryDelay);
+                    }
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    ///   Generic retry mechanism with exponential back-off
+    /// <example><code>
+    ///   Retry(() => MethodThatHasNoReturnValue());
+    /// </code></example>
+    /// </summary>
+    public static void Retry(this Action action, int maxRetry = 3, int retryDelay = 1000)
+    {
+        int retries = 0;
+        while (true)
+        {
+            try
+            {
+                action();
+                break;
+            }
+            catch (Exception ex)
+            {
+                retries++;
+                if (retries > maxRetry)
+                {
+                    throw new TimeoutException($"Operation failed after {maxRetry} retries: {ex.Message}", ex);
+                }
+                Debug.WriteLine($"[WARNING] Retry {retries}/{maxRetry} after failure: {ex.Message}. Retrying in {retryDelay} ms...");
+                Thread.Sleep(retryDelay);
+                retryDelay *= 2; // Double the delay after each attempt.
+            }
+        }
+    }
+
+    /// <summary>
+    ///   Modified retry mechanism for return value with exponential back-off.
+    /// <example><code>
+    ///   int result = Retry(() => MethodThatReturnsAnInteger());
+    /// </code></example>
+    /// </summary>
+    public static T Retry<T>(this Func<T> func, int maxRetry = 3, int retryDelay = 1000)
+    {
+        int retries = 0;
+        while (true)
+        {
+            try
+            {
+                return func();
+            }
+            catch (Exception ex)
+            {
+                retries++;
+                if (retries > maxRetry)
+                {
+                    throw new TimeoutException($"Operation failed after {maxRetry} retries: {ex.Message}", ex);
+                }
+                Debug.WriteLine($"[WARNING] Retry {retries}/{maxRetry} after failure: {ex.Message}. Retrying in {retryDelay} ms...");
+                Thread.Sleep(retryDelay);
+                retryDelay *= 2; // Double the delay after each attempt.
+            }
+        }
+    }
+
+    /// <summary>
+    ///   Generic retry mechanism with exponential back-off
+    /// <example><code>
+    ///   await RetryAsync(() => AsyncMethodThatHasNoReturnValue());
+    /// </code></example>
+    /// </summary>
+    public static async Task RetryAsync(this Func<Task> action, int maxRetry = 3, int retryDelay = 1000)
+    {
+        int retries = 0;
+        while (true)
+        {
+            try
+            {
+                await action();
+                break;
+            }
+            catch (Exception ex)
+            {
+                retries++;
+                if (retries > maxRetry)
+                {
+                    throw new InvalidOperationException($"Operation failed after {maxRetry} retries: {ex.Message}", ex);
+                }
+                Debug.WriteLine($"[WARNING] Retry {retries}/{maxRetry} after failure: {ex.Message}. Retrying in {retryDelay} ms...");
+                await Task.Delay(retryDelay);
+                retryDelay *= 2; // Double the delay after each attempt.
+            }
+        }
+    }
+
+    /// <summary>
+    ///   Modified retry mechanism for return value with exponential back-off.
+    /// <example><code>
+    ///   int result = await RetryAsync(() => AsyncMethodThatReturnsAnInteger());
+    /// </code></example>
+    /// </summary>
+    public static async Task<T> RetryAsync<T>(this Func<Task<T>> func, int maxRetry = 3, int retryDelay = 1000)
+    {
+        int retries = 0;
+        while (true)
+        {
+            try
+            {
+                return await func();
+            }
+            catch (Exception ex)
+            {
+                retries++;
+                if (retries > maxRetry)
+                {
+                    throw new InvalidOperationException($"Operation failed after {maxRetry} retries: {ex.Message}", ex);
+                }
+                Debug.WriteLine($"[WARNING] Retry {retries}/{maxRetry} after failure: {ex.Message}. Retrying in {retryDelay} ms...");
+                await Task.Delay(retryDelay);
+                retryDelay *= 2; // Double the delay after each attempt.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fetch all derived types from a super class.
+    /// </summary>
+    /// <returns><see cref="List{T}"/></returns>
+    public static List<Type> GetDerivedClasses<T>(T objectClass) where T : class
+    {
+        List<Type> derivedClasses = new List<Type>();
+        // Get the assembly containing the base class
+        Assembly assembly = typeof(T).Assembly;
+        // Iterate through all types in the assembly
+        foreach (Type type in assembly.GetTypes())
+        {
+            // Check if the type is a subclass of T
+            if (type.IsSubclassOf(typeof(T)))
+            {
+                Debug.WriteLine($"[INFO] Adding subtype '{type.Name}'");
+                derivedClasses.Add(type);
+            }
+        }
+        Debug.WriteLine($"[INFO] Total subclasses: {derivedClasses.Count}");
+        return derivedClasses;
     }
 
     #region [Easing Functions]
@@ -3916,6 +4267,23 @@ public static class Extensions
         var gs3 = new GradientStop(); gs3.Color = c3; gs3.Offset = 1.0;
         var gsc = new GradientStopCollection();
         gsc.Add(gs1); gsc.Add(gs2); gsc.Add(gs3);
+        var lgb = new LinearGradientBrush
+        {
+            StartPoint = new Windows.Foundation.Point(0.25, 0.25),
+            EndPoint = new Windows.Foundation.Point(1, 1),
+            GradientStops = gsc
+        };
+        return lgb;
+    }
+
+    public static LinearGradientBrush CreateDiagonalGradientBrush(Windows.UI.Color c1, Windows.UI.Color c2, Windows.UI.Color c3, Windows.UI.Color c4)
+    {
+        var gs1 = new GradientStop(); gs1.Color = c1; gs1.Offset = 0.0;
+        var gs2 = new GradientStop(); gs2.Color = c2; gs2.Offset = 0.2;
+        var gs3 = new GradientStop(); gs3.Color = c3; gs3.Offset = 0.4;
+        var gs4 = new GradientStop(); gs4.Color = c4; gs4.Offset = 1.0;
+        var gsc = new GradientStopCollection();
+        gsc.Add(gs1); gsc.Add(gs2); gsc.Add(gs3); gsc.Add(gs4);
         var lgb = new LinearGradientBrush
         {
             StartPoint = new Windows.Foundation.Point(0.25, 0.25),

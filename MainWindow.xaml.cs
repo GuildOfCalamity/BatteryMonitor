@@ -6,6 +6,9 @@ using Microsoft.UI.Content;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Hosting;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Graphics;
+using WinRT.Interop;
 
 namespace BatteryMonitor;
 
@@ -41,6 +44,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     {
         this.InitializeComponent();
         this.VisibilityChanged += MainWindowOnVisibilityChanged;
+        this.Activated += MainWindowOnActivated;
         //this.SizeChanged += MainWindowOnSizeChanged; // We're already using this in CreateGradientBackdrop().
         if (Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
         {
@@ -58,6 +62,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _coordinateConverter = ContentCoordinateConverter.CreateForWindowId(AppWindow.Id);
     }
 
+    #region [Window Events]
     /// <summary>
     /// An impromptu OnLoaded event. 
     /// It would be better to read from the AppWin.Changed event, but this works fine.
@@ -71,6 +76,16 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         _firstVisible = true;
     }
 
+    void MainWindowOnActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (App.IsClosing)
+            return;
+
+        // Only perform update if window is visible
+        if (args.WindowActivationState != WindowActivationState.Deactivated)
+            SetIsAlwaysOnTop(this, App.Profile != null ? App.Profile.topmost : true);
+    }
+    #endregion
     void MinimizeOnClicked(object sender, RoutedEventArgs args) => _overlapPresenter?.Minimize();
 
     void MaximizeOnClicked(object sender, RoutedEventArgs args) => _overlapPresenter?.Maximize();
@@ -78,7 +93,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     void CloseOnClicked(object sender, RoutedEventArgs args) => this.Close(); // -or- (Application.Current as App)?.Exit();
 
     #region [Helpers]
-
     void CreateGradientBackdrop(FrameworkElement fe, System.Numerics.Vector2 endPoint)
     {
         // Get the FrameworkElement's compositor.
@@ -129,5 +143,48 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         // Set the sprite visual as the background of the FrameworkElement.
         ElementCompositionPreview.SetElementChildVisual(fe, spriteVisual);
     }
+
+    /// <summary>
+    /// Configures whether the window should always be displayed on top of other windows or not
+    /// </summary>
+    /// <remarks>The presenter must be an overlapped presenter.</remarks>
+    /// <exception cref="NotSupportedException">Throw if the AppWindow Presenter isn't an overlapped presenter.</exception>
+    /// <param name="window"><see cref="Microsoft.UI.Xaml.Window"/></param>
+    /// <param name="enable">true to set always on top, false otherwise</param>
+    void SetIsAlwaysOnTop(Microsoft.UI.Xaml.Window window, bool enable) => UpdateOverlappedPresenter(window, (op) => op.IsAlwaysOnTop = enable);
+    void UpdateOverlappedPresenter(Microsoft.UI.Xaml.Window window, Action<Microsoft.UI.Windowing.OverlappedPresenter> action)
+    {
+        if (window is null)
+            throw new ArgumentNullException(nameof(window));
+
+        var appwindow = GetAppWindow(window);
+
+        if (appwindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter overlapped)
+            action(overlapped);
+        else
+            throw new NotSupportedException($"Not supported with a {appwindow.Presenter.Kind} presenter.");
+    }
+
+    /// <summary>
+    /// Gets the <see cref="Microsoft.UI.Windowing.AppWindow"/> for the window.
+    /// </summary>
+    /// <param name="window"><see cref="Microsoft.UI.Xaml.Window"/></param>
+    /// <returns><see cref="Microsoft.UI.Windowing.AppWindow"/></returns>
+    Microsoft.UI.Windowing.AppWindow GetAppWindow(Microsoft.UI.Xaml.Window window) => GetAppWindowFromWindowHandle(WindowNative.GetWindowHandle(window));
+
+    /// <summary>
+    /// Gets the <see cref="Microsoft.UI.Windowing.AppWindow"/> from an HWND.
+    /// </summary>
+    /// <param name="hwnd"><see cref="IntPtr"/> of the window</param>
+    /// <returns><see cref="Microsoft.UI.Windowing.AppWindow"/></returns>
+    Microsoft.UI.Windowing.AppWindow GetAppWindowFromWindowHandle(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+            throw new ArgumentNullException(nameof(hwnd));
+
+        Microsoft.UI.WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+        return Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+    }
+
     #endregion
 }

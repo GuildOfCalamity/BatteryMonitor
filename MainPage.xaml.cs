@@ -7,20 +7,19 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-
+using Microsoft.UI.Xaml.Media;
 using Windows.Devices.Power;
 
 namespace BatteryMonitor;
 
 public sealed partial class MainPage : Page, INotifyPropertyChanged
 {
-    #region [Props]
+    #region [Properties]
+    ValueStopwatch _watch { get; set; }
     readonly DispatcherQueue _localDispatcher;
     readonly DispatcherQueueSynchronizationContext? _syncContext;
     DispatcherTimer? _tmrUpdate;
-    
     Windows.Devices.Power.Battery? _battery;
-    Windows.System.Power.BatteryStatus _lastStatus = Windows.System.Power.BatteryStatus.NotPresent;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public void NotifyPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string propertyName = "")
@@ -28,6 +27,13 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         if (string.IsNullOrEmpty(propertyName)) { return; }
         // Confirm that we're on the UI thread in the event that DependencyProperty is changed under forked thread.
         DispatcherQueue.InvokeOnUI(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
+    }
+
+    Windows.System.Power.BatteryStatus _lastStatus = Windows.System.Power.BatteryStatus.NotPresent;
+    public Windows.System.Power.BatteryStatus LastStatus
+    {
+        get => _lastStatus;
+        set { _lastStatus = value; NotifyPropertyChanged(nameof(LastStatus)); }
     }
 
     bool _isBusy = false;
@@ -51,54 +57,113 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         set { _remain = value; NotifyPropertyChanged(nameof(Remain)); }
     }
 
-    double _outlineWidth = 500;
+    double _outlineWidth = 322;
     public double OutlineWidth
     {
         get => _outlineWidth;
         set { _outlineWidth = value; NotifyPropertyChanged(nameof(OutlineWidth)); }
     }
 
-    double _outlineHeight = 80;
+    double _outlineHeight = 74;
     public double OutlineHeight
     {
         get => _outlineHeight;
         set { _outlineHeight = value; NotifyPropertyChanged(nameof(OutlineHeight)); }
     }
 
-    double _fillWidth = 450;
+    double _fillWidth = 320;
     public double FillWidth
     {
         get => _fillWidth;
         set { _fillWidth = value; NotifyPropertyChanged(nameof(FillWidth)); }
     }
 
-    double _fillHeight = 78;
+    double _fillHeight = 72;
     public double FillHeight
     {
         get => _fillHeight;
         set { _fillHeight = value; NotifyPropertyChanged(nameof(FillHeight)); }
     }
+
+    Brush _fillBrush = new SolidColorBrush(Microsoft.UI.Colors.DodgerBlue);
+    public Brush FillBrush
+    {
+        get => _fillBrush;
+        set { _fillBrush = value; NotifyPropertyChanged(nameof(FillBrush)); }
+    }
+
+    int _workWidth = 100;
+    LinearGradientBrush? brush100;
+    LinearGradientBrush? brush75;
+    LinearGradientBrush? brush50;
+    LinearGradientBrush? brush25;
     #endregion
 
     public MainPage()
     {
+        _watch = ValueStopwatch.StartNew();
         this.InitializeComponent();
         this.Loaded += MainPageOnLoaded;
         this.Unloaded += MainPageOnUnloaded;
+
         _localDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         _syncContext = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(_localDispatcher);
         SynchronizationContext.SetSynchronizationContext(_syncContext);
+
+        #region [Brush Setup]
+        // Color.FromArgb(255, 255, 251, 100); //  Yellow
+        // Color.FromArgb(255, 255, 229, 005); //  |
+        // Color.FromArgb(255, 255, 201, 005); //  |
+        // Color.FromArgb(255, 255, 184, 005); //  |
+        // Color.FromArgb(255, 255, 165, 000); //  Orange
+        // Color.FromArgb(255, 242, 139, 011); //  |
+        // Color.FromArgb(255, 236, 102, 011); //  |
+        // Color.FromArgb(255, 244, 086, 017); //  |
+        // Color.FromArgb(255, 255, 039, 017); //  ▼
+        // Color.FromArgb(255, 255, 010, 005); //  Red
+
+        brush100 = Extensions.CreateDiagonalGradientBrush(
+            Windows.UI.Color.FromArgb(255, 255, 160, 0), // Orange
+            Windows.UI.Color.FromArgb(255, 240, 226, 0), // Yellow
+            Windows.UI.Color.FromArgb(255, 20, 255, 0)); // Green
+
+        brush75 = Extensions.CreateDiagonalGradientBrush(
+            Windows.UI.Color.FromArgb(255, 255, 120, 0),  // Red-Orange
+            Windows.UI.Color.FromArgb(255, 255, 200, 0),  // Orange-Yellow
+            Windows.UI.Color.FromArgb(255, 155, 255, 0)); // Green-Yellow
+
+        brush50 = Extensions.CreateDiagonalGradientBrush(
+            Windows.UI.Color.FromArgb(255, 255, 50, 0),   // Red
+            Windows.UI.Color.FromArgb(255, 255, 160, 0),  // Orange
+            Windows.UI.Color.FromArgb(255, 240, 226, 0)); // Yellow
+
+        brush25 = Extensions.CreateDiagonalGradientBrush(
+            Windows.UI.Color.FromArgb(255, 255, 50, 0),   // Red-Orange
+            Windows.UI.Color.FromArgb(255, 255, 100, 0),  // Orange
+            Windows.UI.Color.FromArgb(255, 255, 150, 0)); // Yellow-Orange
+        #endregion
     }
 
     void MainPageOnUnloaded(object sender, RoutedEventArgs e)
     {
         ToggleTimer(false);
+        if (App.Profile != null && App.Profile.logging)
+        {
+            Logger.Log($"⏱️ Application instance ran for {_watch.GetElapsedFriendly()}", true);
+            Logger.ConfirmLogIsFlushed(2000);
+        }
     }
 
     void MainPageOnLoaded(object sender, RoutedEventArgs e)
     {
+        IsBusy = true;
+        //var subclasses = Extensions.GetDerivedClasses(sender);
+        _workWidth = App.Profile != null ? App.Profile.windowWidth - 141 : 300;
         _battery = Windows.Devices.Power.Battery.AggregateBattery;
         ToggleTimer(true);
+        //FillBrush = Extensions.CreateDiagonalGradientBrush(Windows.UI.Color.FromArgb(255, 255, 50, 0), Windows.UI.Color.FromArgb(255, 255, 160, 0), Windows.UI.Color.FromArgb(255, 240, 226, 0), Windows.UI.Color.FromArgb(255, 20, 255, 0));
+        if (App.Profile != null && App.Profile.logging)
+            Logger.SetLoggerFolderPath(AppDomain.CurrentDomain.BaseDirectory);
     }
 
     void ToggleTimer(bool enabled)
@@ -134,7 +199,6 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         UpdateBatteryStats(_battery);
     }
 
-
     void UpdateBatteryStats(Battery? battery)
     {
         if (battery is null)
@@ -144,21 +208,22 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         {
             BatteryReport batteryReport = battery.GetReport();
 
-            // If the battery status has changed then bring our window to the foreground.
-            if (_lastStatus != batteryReport.Status)
+            if (LastStatus != batteryReport.Status)
             {
-                _lastStatus = batteryReport.Status;
+                LastStatus = batteryReport.Status;
+                // If the battery status has changed then bring our window to the foreground.
+                if (App.Profile != null && !App.Profile.topmost)
+                    App.ActivateMainWindow();
             }
 
             if (batteryReport.Status == Windows.System.Power.BatteryStatus.NotPresent)
             {
                 Charge = "Not Present";
                 Remain = "⌛ Not Present";
-                DrawBattery(25000, 50000, App.Profile != null ? App.Profile.windowWidth - 103 : 300);
+                DrawBattery(25000, 50000, _workWidth);
                 return;
             }
 
-            //Debug.WriteLine($" Status............: {_lastStatus}         ");
             //Debug.WriteLine($" ChargeRate........: {Extensions.FormatMilliwatts(batteryReport.ChargeRateInMilliwatts)}        ");
             //Debug.WriteLine($" DesignCapacity....: {Extensions.FormatMilliwatts(batteryReport.DesignCapacityInMilliwattHours)}h      ");
             //Debug.WriteLine($" FullChargeCapacity: {Extensions.FormatMilliwatts(batteryReport.FullChargeCapacityInMilliwattHours)}h        ");
@@ -175,11 +240,15 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                 Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastRate)}";
             }
 
-            DrawBattery(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.FullChargeCapacityInMilliwattHours, App.Profile != null ? App.Profile.windowWidth - 103 : 300);
+            DrawBattery(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.FullChargeCapacityInMilliwattHours, _workWidth);
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"UpdateBatteryStatus: {ex.Message}");
+            Logger.Log(ex);
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -191,20 +260,33 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         if (currentValue == null || maxValue == null)
             return;
 
-        // Calculate the percentage of charge
-        int percentage = (int)Math.Round(((double)currentValue.Value / maxValue.Value) * 100);
+        try
+        {
+            // Calculate the percentage of charge
+            int percentage = (int)Math.Round(((double)currentValue.Value / maxValue.Value) * 100);
 
-        // Calculate the number of battery characters to draw
-        int barLength = (int)Math.Round(((double)percentage / 100) * fullLength);
+            // Calculate the number of battery characters to draw
+            int barLength = (int)Math.Round(((double)percentage / 100) * fullLength);
 
-        Charge = $"⚡ {percentage}%";
+            Charge = $"⚡ {percentage}%";
 
-        //OutlineHeight = fullLength;
-        //OutlineWidth = fullLength / 4.0;
-        
-        FillHeight = 70;
-        FillWidth = barLength;
-        
-        //Debug.WriteLine($"[INFO] Rectangle fill width is {rectFill.ActualWidth} ");
+            //OutlineHeight = 74;
+            //OutlineWidth = fullLength;
+
+            FillHeight = 72;
+            FillWidth = barLength;
+
+            switch (percentage)
+            {
+                case int p when p >= 75: FillBrush = brush100!; break;
+                case int p when p >= 50: FillBrush = brush75!; break;
+                case int p when p >= 25: FillBrush = brush50!; break;
+                case int p when p >= 0: FillBrush = brush25!; break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log(ex);
+        }
     }
 }

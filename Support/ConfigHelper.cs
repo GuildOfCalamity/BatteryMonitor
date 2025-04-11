@@ -32,7 +32,7 @@ public class Config
 
     [JsonInclude]
     [JsonPropertyName("logging")]
-    public bool logging = true;
+    public bool logging = false;
 
     [JsonInclude]
     [JsonPropertyName("metrics")]
@@ -56,11 +56,15 @@ public class Config
 
     [JsonInclude]
     [JsonPropertyName("lastrate")]
-    public int lastRate = 17000;
+    public int lastRate = 17000; // mW
 
     [JsonInclude]
     [JsonPropertyName("refresh")]
-    public int refresh = 3000;
+    public int refresh = 3000;  // ms
+
+    [JsonInclude]
+    [JsonPropertyName("topmost")]
+    public bool topmost = true;
 
     public override string ToString() => JsonSerializer.Serialize<Config>(this, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 }
