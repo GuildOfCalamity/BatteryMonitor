@@ -219,15 +219,15 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             if (batteryReport.Status == Windows.System.Power.BatteryStatus.NotPresent)
             {
                 Charge = "Not Present";
-                Remain = "⌛ Not Present";
-                DrawBattery(25000, 50000, _workWidth);
+                Remain = "⚠️ Not Present";
+                DrawBattery(Random.Shared.Next(1, 49000), 50000, _workWidth);
                 return;
             }
 
-            //Debug.WriteLine($" ChargeRate........: {Extensions.FormatMilliwatts(batteryReport.ChargeRateInMilliwatts)}        ");
-            //Debug.WriteLine($" DesignCapacity....: {Extensions.FormatMilliwatts(batteryReport.DesignCapacityInMilliwattHours)}h      ");
-            //Debug.WriteLine($" FullChargeCapacity: {Extensions.FormatMilliwatts(batteryReport.FullChargeCapacityInMilliwattHours)}h        ");
-            //Debug.WriteLine($" RemainingCapacity.: {Extensions.FormatMilliwatts(batteryReport.RemainingCapacityInMilliwattHours)}h        ");
+            //Debug.WriteLine($"📝 ChargeRate........: {Extensions.FormatMilliwatts(batteryReport.ChargeRateInMilliwatts)}        ");
+            //Debug.WriteLine($"📝 DesignCapacity....: {Extensions.FormatMilliwatts(batteryReport.DesignCapacityInMilliwattHours)}h      ");
+            //Debug.WriteLine($"📝 FullChargeCapacity: {Extensions.FormatMilliwatts(batteryReport.FullChargeCapacityInMilliwattHours)}h        ");
+            //Debug.WriteLine($"📝 RemainingCapacity.: {Extensions.FormatMilliwatts(batteryReport.RemainingCapacityInMilliwattHours)}h        ");
 
             if (batteryReport.ChargeRateInMilliwatts != null && batteryReport.ChargeRateInMilliwatts < 0)
             {
