@@ -219,7 +219,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             if (batteryReport.Status == Windows.System.Power.BatteryStatus.NotPresent)
             {
                 Charge = "Not Present";
-                Remain = "⚠️ Not Present";
+                Remain = "⚠️ N/A (simulation)";
                 DrawBattery(Random.Shared.Next(1, 49000), 50000, _workWidth);
                 return;
             }
