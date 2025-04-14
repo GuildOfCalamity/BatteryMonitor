@@ -64,7 +64,7 @@ public partial class App : Application
     public static List<string>? AssemblyReferences { get; private set; }
     public static Action<Windows.Graphics.SizeInt32>? WindowSizeChanged { get; set; }
 
-    public static CancellationTokenSource? CoreChannelToken;
+    public static CancellationTokenSource? CoreToken;
     static ValueStopwatch StopWatch { get; set; }
 
     /// <summary>
@@ -183,97 +183,6 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// EnvironmentVariableTarget has three options:
-    ///     1) Machine
-    ///     2) Process
-    ///     3) User
-    /// </summary>
-    void GatherEnvironment()
-    {
-        // Get the environment variables.
-        IDictionary procVars = GetEnvironmentVariablesWithErrorLog(EnvironmentVariableTarget.Process);
-        // Adding names and variables that exist.
-        foreach (DictionaryEntry pVar in procVars)
-        {
-            string? pVarKey = (string?)pVar.Key;
-            string? pVarValue = (string?)pVar.Value ?? "";
-            if (!string.IsNullOrEmpty(pVarKey) && !MachineEnvironment.ContainsKey(pVarKey))
-            {
-                MachineEnvironment.Add(pVarKey, pVarValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Returns the variables for the specified target. Errors that occurs will be caught and logged.
-    /// </summary>
-    /// <param name="target">The target variable source of the type <see cref="EnvironmentVariableTarget"/> </param>
-    /// <returns>A dictionary with the variable or an empty dictionary on errors.</returns>
-    IDictionary GetEnvironmentVariablesWithErrorLog(EnvironmentVariableTarget target)
-    {
-        try
-        {
-            return Environment.GetEnvironmentVariables(target);
-        }
-        catch (Exception ex)
-        {
-            DebugLog($"Exception while getting the environment variables for target '{target}': {ex.Message}");
-            return new Hashtable(); // HashTable inherits from IDictionary
-        }
-    }
-
-    public static void CloseExistingInstance()
-    {
-        if (Debugger.IsAttached)
-        {
-            DebugLog($"Skipping kill since debugger is attached.");
-            return;
-        }
-
-        try
-        {
-            var name = AppDomain.CurrentDomain.FriendlyName;
-            Process[] pname = Process.GetProcessesByName(name);
-            if (pname.Length > 1)
-            {
-                DebugLog($"Killing existing app '{name}'");
-                pname.Where(p => p.Id != Process.GetCurrentProcess().Id).First().Kill();
-            }
-        }
-        catch (Exception ex)
-        {
-            DebugLog($"CloseExistingApp: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Similar to <see cref="CloseExistingInstance"/>.
-    /// </summary>
-    public static void CloseExistingInstanceAlt()
-    {
-        if (Debugger.IsAttached)
-        {
-            DebugLog($"Skipping kill since debugger is attached.");
-            return;
-        }
-
-        try
-        {
-            int currentId = Process.GetCurrentProcess().Id; // Get the current process ID.
-            Process[] processes = Process.GetProcessesByName(AppDomain.CurrentDomain.FriendlyName);
-            foreach (var process in processes)
-            {
-                if (process.Id != currentId)
-                    process.Kill();
-            }
-        }
-        catch (Exception ex)
-        {
-            DebugLog($"CloseExistingInstanceAlt: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     /// Invoked when the application is launched.
     /// </summary>
     /// <param name="args">Details about the launch request and process.</param>
@@ -350,8 +259,8 @@ public partial class App : Application
                 
                 App.IsClosing = true;
                 
-                if (CoreChannelToken is not null)
-                    CoreChannelToken.Cancel();
+                if (CoreToken is not null)
+                    CoreToken.Cancel();
 
                 if (Profile is not null)
                 {
@@ -1012,6 +921,99 @@ public partial class App : Application
         {
             DebugLog("Calling MainWindow.Activate()");
             m_window.Activate();
+        }
+    }
+    #endregion
+
+    #region [Environment]
+    /// <summary>
+    /// EnvironmentVariableTarget has three options:
+    ///     1) Machine
+    ///     2) Process
+    ///     3) User
+    /// </summary>
+    void GatherEnvironment()
+    {
+        // Get the environment variables.
+        IDictionary procVars = GetEnvironmentVariablesWithErrorLog(EnvironmentVariableTarget.Process);
+        // Adding names and variables that exist.
+        foreach (DictionaryEntry pVar in procVars)
+        {
+            string? pVarKey = (string?)pVar.Key;
+            string? pVarValue = (string?)pVar.Value ?? "";
+            if (!string.IsNullOrEmpty(pVarKey) && !MachineEnvironment.ContainsKey(pVarKey))
+            {
+                MachineEnvironment.Add(pVarKey, pVarValue);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the variables for the specified target. Errors that occurs will be caught and logged.
+    /// </summary>
+    /// <param name="target">The target variable source of the type <see cref="EnvironmentVariableTarget"/> </param>
+    /// <returns>A dictionary with the variable or an empty dictionary on errors.</returns>
+    IDictionary GetEnvironmentVariablesWithErrorLog(EnvironmentVariableTarget target)
+    {
+        try
+        {
+            return Environment.GetEnvironmentVariables(target);
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"Exception while getting the environment variables for target '{target}': {ex.Message}");
+            return new Hashtable(); // HashTable inherits from IDictionary
+        }
+    }
+
+    public static void CloseExistingInstance()
+    {
+        if (Debugger.IsAttached)
+        {
+            DebugLog($"Skipping kill since debugger is attached.");
+            return;
+        }
+
+        try
+        {
+            var name = AppDomain.CurrentDomain.FriendlyName;
+            Process[] pname = Process.GetProcessesByName(name);
+            if (pname.Length > 1)
+            {
+                DebugLog($"Killing existing app '{name}'");
+                pname.Where(p => p.Id != Process.GetCurrentProcess().Id).First().Kill();
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"CloseExistingApp: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Similar to <see cref="CloseExistingInstance"/>.
+    /// </summary>
+    public static void CloseExistingInstanceAlt()
+    {
+        if (Debugger.IsAttached)
+        {
+            DebugLog($"Skipping kill since debugger is attached.");
+            return;
+        }
+
+        try
+        {
+            int currentId = Process.GetCurrentProcess().Id; // Get the current process ID.
+            Process[] processes = Process.GetProcessesByName(AppDomain.CurrentDomain.FriendlyName);
+            foreach (var process in processes)
+            {
+                if (process.Id != currentId)
+                    process.Kill();
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog($"CloseExistingInstanceAlt: {ex.Message}");
         }
     }
     #endregion

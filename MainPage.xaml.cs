@@ -1,6 +1,10 @@
-﻿using System;
+﻿//#define HAS_POWERGRID
+
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,7 +12,9 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+
 using Windows.Devices.Power;
+using Windows.Storage.Streams;
 
 namespace BatteryMonitor;
 
@@ -142,6 +148,13 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             Windows.UI.Color.FromArgb(255, 255, 100, 0),  // Orange
             Windows.UI.Color.FromArgb(255, 255, 150, 0)); // Yellow-Orange
         #endregion
+
+        // PowerGrid is not accessible in WinUI3/UWP apps targeting desktop. It's
+        // only supported on certain device families (e.g., IoT, Surface Hub, Xbox).
+        if (Windows.Foundation.Metadata.ApiInformation.IsTypePresent("Windows.Devices.Power.PowerGridForecast"))
+            Debug.WriteLine("PowerGridForcast is available");
+        else
+            Debug.WriteLine("PowerGridForcast is not available");
     }
 
     void MainPageOnUnloaded(object sender, RoutedEventArgs e)
@@ -283,10 +296,91 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                 case int p when p >= 25: FillBrush = brush50!; break;
                 case int p when p >= 0: FillBrush = brush25!; break;
             }
+
+            // You could add an event here when the level drops too low to automatically shutdown the system.
         }
         catch (Exception ex)
         {
             Logger.Log(ex);
         }
     }
+
+    async Task InvokeOutputStreamWriteAsync(uint capacity = 256)
+    {
+        byte[] data = new byte[capacity];
+        Random.Shared.NextBytes(data);
+
+        using var stream = new InMemoryRandomAccessStream().AsStream();
+        await stream.WriteAsync(data, 0, (int)capacity);
+        stream.Position = 0; // reset position
+
+        using var fileStream = File.OpenWrite(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OutputStream.txt"));
+        using var winRTStream = fileStream.AsOutputStream();
+        var winRTBuffer = new Windows.Storage.Streams.Buffer(capacity);
+
+        StreamIOHelper.CopyByteArrayToBuffer(data, winRTBuffer);
+
+        await winRTStream.WriteAsync(winRTBuffer);
+        await winRTStream.FlushAsync();
+        winRTStream.Dispose();
+    }
+
+#if HAS_POWERGRID
+    void TestPowerGridClass()
+    {
+        Windows.Devices.Power.PowerGridForecast forecast = Windows.Devices.Power.PowerGridForecast.GetForecast();
+        PrintBestTimes(forecast);
+    }
+
+    void PrintBestTimes(Windows.Devices.Power.PowerGridForecast forecast)
+    {
+        double bestSeverity = double.MaxValue;
+        double bestLowImpactSeverity = double.MaxValue;
+        DateTime bestTime = DateTime.MaxValue;
+        DateTime bestLowImpactTime = DateTime.MaxValue;
+        TimeSpan blockDuration = forecast.BlockDuration;
+        DateTime startTime = forecast.StartTime;
+        IList<Windows.Devices.Power.PowerGridData> forecastSignals = forecast.Forecast;
+
+        if (forecastSignals.Count == 0)
+        {
+            Console.WriteLine("Error encountered with getting forecast; try again later.");
+            return;
+        }
+
+        foreach (Windows.Devices.Power.PowerGridData data in forecastSignals)
+        {
+            if (data.Severity < bestSeverity)
+            {
+                bestSeverity = data.Severity;
+                bestTime = startTime;
+            }
+
+            if (data.IsLowUserExperienceImpact && data.Severity < bestLowImpactSeverity)
+            {
+                bestLowImpactSeverity = data.Severity;
+                bestLowImpactTime = startTime;
+            }
+
+            startTime = startTime + blockDuration;
+        }
+
+        if (bestLowImpactTime != DateTime.MaxValue)
+        {
+            DateTime endBestLowImpactTime = bestLowImpactTime + blockDuration;
+            Console.WriteLine($"Lowest severity during low impact is {bestLowImpactSeverity}, which starts at {bestLowImpactTime.ToString()}, and ends at {endBestLowImpactTime}.");
+        }
+        else
+        {
+            Console.WriteLine("There's no low-user-impact time in which to do work.");
+        }
+
+        if (bestTime != DateTime.MaxValue)
+        {
+            DateTime endBestSeverity = bestTime + blockDuration;
+            Console.WriteLine($"Lowest severity is {bestSeverity}, which starts at {bestTime.ToString()}, and ends at {endBestSeverity.ToString()}.");
+        }
+    }
+#endif
+
 }

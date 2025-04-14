@@ -97,7 +97,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Opacity="0.9"
-                Source="ms-appx:///Assets/Background1.png"
+                Source="ms-appx:///Assets/Background2.png"
                 Stretch="Uniform" />
 
             <!--<Rectangle
