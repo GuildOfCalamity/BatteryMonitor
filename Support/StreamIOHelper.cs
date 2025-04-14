@@ -11,7 +11,7 @@ using Windows.Storage.Streams;
 namespace BatteryMonitor;
 
 /// <summary>
-/// Ready for serial, socket, or file streams.
+/// Production ready for serial, socket, or file streams.
 /// IBuffer buffer = await StreamIOHelper.ReadBufferAsync(inputStream, 512, timeoutMs: 3000);
 /// string result = await StreamIOHelper.ReadStringAsync(stream, 1024, timeoutMs: 3000);
 /// bool success = await StreamIOHelper.WriteStringAsync(stream, "PING", timeoutMs: 2000);
@@ -45,10 +45,13 @@ public static class StreamIOHelper
             uint bytesLoaded = await reader.LoadAsync(bufferLength).AsTask(cts.Token);
             return bytesLoaded > 0 ? reader.ReadString(bytesLoaded) : string.Empty;
         }
-        catch (TaskCanceledException) {  }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: Operation was canceled or timed out.");
+        }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ReadStringAsync: {ex.Message}");
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
         }
         return string.Empty;
     }
@@ -82,10 +85,13 @@ public static class StreamIOHelper
                 await writer.FlushAsync().AsTask(cts.Token);
             return true;
         }
-        catch (TaskCanceledException) { }
+        catch (TaskCanceledException) 
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: Operation was canceled or timed out.");
+        }
         catch (Exception ex)
         {
-            Debug.WriteLine($"WriteStringAsync: {ex.Message}");
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
         }
         return false;
 
@@ -126,10 +132,13 @@ public static class StreamIOHelper
             reader.ReadBytes(buffer);
             return buffer;
         }
-        catch (TaskCanceledException) { }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: Operation was canceled or timed out.");
+        }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ReadBytesAsync: {ex.Message}");
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
         }
         return Array.Empty<byte>();
 
@@ -164,10 +173,13 @@ public static class StreamIOHelper
                 await writer.FlushAsync().AsTask(cts.Token);
             return true;
         }
-        catch (TaskCanceledException) { }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: Operation was canceled or timed out.");
+        }
         catch (Exception ex)
         {
-            Debug.WriteLine($"WriteBytesAsync: {ex.Message}");
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
         }
         return false;
     }
@@ -206,10 +218,13 @@ public static class StreamIOHelper
             uint bytesLoaded = await reader.LoadAsync(bufferLength).AsTask(cts.Token);
             return bytesLoaded > 0 ? reader.ReadBuffer(bytesLoaded) : WindowsRuntimeBuffer.Create(0);
         }
-        catch (TaskCanceledException) { }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: Operation was canceled or timed out.");
+        }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ReadBufferAsync: {ex.Message}");
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
         }
         return WindowsRuntimeBuffer.Create(0); // Return empty buffer
 
@@ -252,7 +267,7 @@ public static class StreamIOHelper
         catch (Exception ex)
         {
             // Handle any exceptions that might occur during the copy operation
-            App.DebugLog($"CopyByteArrayToBuffer: {ex.Message}");
+            App.DebugLog($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
             throw; // Re-throw the exception to signal the caller
         }
     }
@@ -278,14 +293,14 @@ public static class StreamIOHelper
         catch (Exception ex)
         {
             // Handle any exceptions that might occur during the copy operation
-            App.DebugLog($"CopyBufferToByteArray: {ex.Message}");
+            App.DebugLog($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {ex.Message}");
             throw; // Re-throw the exception to signal the caller
         }
     }
 
     #endregion
 
-    #region [Miscellaneous]
+    #region [IRandomAccessStream Methods]
     public static async Task<InMemoryRandomAccessStream> CopyInputStreamToRandomAccessStream(this Stream stream)
     {
         var randomAccessStream = new InMemoryRandomAccessStream();
@@ -294,6 +309,176 @@ public static class StreamIOHelper
         return randomAccessStream;
     }
 
+    public static async Task<IBuffer> RandomAccessStreamToBufferAsync(this IRandomAccessStream stream, int timeoutMs = 4000)
+    {
+        if (stream == null || stream.Size == 0)
+            return WindowsRuntimeBuffer.Create(0);
+
+        stream.Seek(0); // Ensure start of stream
+        return await ReadBufferAsync(stream, (uint)stream.Size, timeoutMs);
+    }
+
+    public static async Task<IRandomAccessStream> BufferToRandomAccessStreamAsync(this IBuffer buffer)
+    {
+        var stream = new InMemoryRandomAccessStream();
+        using var writer = new DataWriter(stream);
+        writer.WriteBuffer(buffer);
+        await writer.StoreAsync();
+        await writer.FlushAsync();
+        stream.Seek(0); // Ensure start of stream
+        return stream;
+    }
+
+    public static async Task<string> ReadStringAsync(this IRandomAccessStream stream, Encoding? encoding = null, uint bufferLength = 1024, int timeoutMs = 4000)
+    {
+        encoding ??= Encoding.UTF8;
+        using var cts = new CancellationTokenSource(timeoutMs);
+        using var reader = new DataReader(stream.GetInputStreamAt(0))
+        {
+            InputStreamOptions = StreamOptions
+        };
+
+        try
+        {
+            uint bytesLoaded = await reader.LoadAsync(bufferLength).AsTask(cts.Token);
+            var buffer = new byte[bytesLoaded];
+            reader.ReadBytes(buffer);
+            return encoding.GetString(buffer);
+        }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} Operation was canceled or timed out.");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} {ex.Message}");
+        }
+        return string.Empty;
+    }
+
+    public static async Task<byte[]> ReadBytesAsync(this IRandomAccessStream stream, uint bufferLength = 1024, int timeoutMs = 4000)
+    {
+        using var cts = new CancellationTokenSource(timeoutMs);
+        using var reader = new DataReader(stream.GetInputStreamAt(0))
+        {
+            InputStreamOptions = StreamOptions
+        };
+
+        try
+        {
+            uint bytesLoaded = await reader.LoadAsync(bufferLength).AsTask(cts.Token);
+            var buffer = new byte[bytesLoaded];
+            reader.ReadBytes(buffer);
+            return buffer;
+        }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} Operation was canceled or timed out.");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} {ex.Message}");
+        }
+        return Array.Empty<byte>();
+    }
+
+    public static async Task<bool> WriteStringAsync(this IRandomAccessStream stream, string text, Encoding? encoding = null, int timeoutMs = 4000)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        encoding ??= Encoding.UTF8;
+
+        var bytes = encoding.GetBytes(text);
+        return await WriteBytesAsync(stream, bytes, timeoutMs);
+    }
+
+    public static async Task<bool> WriteBytesAsync(this IRandomAccessStream stream, byte[] data, int timeoutMs = 4000)
+    {
+        if (data == null || data.Length == 0) return false;
+
+        using var cts = new CancellationTokenSource(timeoutMs);
+        using var writer = new DataWriter(stream.GetOutputStreamAt(0));
+        writer.WriteBytes(data);
+
+        try
+        {
+            await writer.StoreAsync().AsTask(cts.Token);
+            await writer.FlushAsync().AsTask(cts.Token);
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: Operation was canceled or timed out.");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} {ex.Message}");
+        }
+        return false;
+    }
+
+    public static async Task<IBuffer> ReadBufferAsync(this IRandomAccessStream stream, uint bufferLength = 1024, int timeoutMs = 4000)
+    {
+        using var cts = new CancellationTokenSource(timeoutMs);
+        using var reader = new DataReader(stream.GetInputStreamAt(0))
+        {
+            InputStreamOptions = StreamOptions
+        };
+
+        try
+        {
+            uint bytesLoaded = await reader.LoadAsync(bufferLength).AsTask(cts.Token);
+            return bytesLoaded > 0 ? reader.ReadBuffer(bytesLoaded) : WindowsRuntimeBuffer.Create(0);
+        }
+        catch (TaskCanceledException)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} Operation was canceled or timed out.");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name} {ex.Message}");
+        }
+        return WindowsRuntimeBuffer.Create(0);
+    }
+
+    public static InMemoryRandomAccessStream CreateRandomAccessStreamFromBytes(this byte[] data)
+    {
+        var stream = new InMemoryRandomAccessStream();
+        _ = WriteBytesAsync(stream, data).Result;
+        return stream;
+    }
+
+    public static InMemoryRandomAccessStream CreateRandomAccessStreamFromString(this string text, Encoding? encoding = null)
+    {
+        encoding ??= Encoding.UTF8;
+        var stream = new InMemoryRandomAccessStream();
+        _ = WriteStringAsync(stream, text, encoding).Result;
+        return stream;
+    }
+
+    public static async Task<byte[]> ReadAllBytesAsync(this InMemoryRandomAccessStream stream, int timeoutMs = 4000)
+    {
+        return await ReadBytesAsync(stream, (uint)stream.Size, timeoutMs);
+    }
+
+    public static async Task<string> ReadAllTextAsync(this InMemoryRandomAccessStream stream, Encoding? encoding = null, int timeoutMs = 4000)
+    {
+        return await ReadStringAsync(stream, encoding, (uint)stream.Size, timeoutMs);
+    }
+
+    public static async Task<bool> AppendBytesAsync(this InMemoryRandomAccessStream stream, byte[] data, int timeoutMs = 4000)
+    {
+        stream.Seek(stream.Size); // Move to end
+        return await WriteBytesAsync(stream, data, timeoutMs);
+    }
+
+    public static async Task<bool> AppendStringAsync(this InMemoryRandomAccessStream stream, string text, Encoding? encoding = null, int timeoutMs = 4000)
+    {
+        stream.Seek(stream.Size); // Move to end
+        return await WriteStringAsync(stream, text, encoding, timeoutMs);
+    }
+    #endregion
+
+    #region [Miscellaneous]
     /// <summary>
     /// byte[] rawBytes = StreamIOHelper.BufferToBytes(buffer);
     /// </summary>
