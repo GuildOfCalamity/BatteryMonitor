@@ -97,7 +97,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Opacity="0.9"
-                Source="ms-appx:///Assets/Background2.png"
+                Source="ms-appx:///Assets/Background1.png"
                 Stretch="Uniform" />
 
             <!--<Rectangle
@@ -120,7 +120,7 @@
                 Margin="45,0,0,0"
                 HorizontalAlignment="Left"
                 Fill="{x:Bind FillBrush, Mode=OneWay, FallbackValue=DodgerBlue}"
-                Opacity="0.9"
+                Opacity="0.85"
                 RadiusX="7"
                 RadiusY="7"
                 Stretch="Fill" />

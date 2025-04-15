@@ -44,7 +44,7 @@ public partial class App : Application
 
     public static Window? m_window;
     public static int m_width { get; set; } = 473;
-    public static int m_height { get; set; } = 235;
+    public static int m_height { get; set; } = 205;
     public static bool IsClosing { get; set; } = false;
     public static string BaseFolder { get; private set; }
     public static FrameworkElement? MainRoot { get; set; }
@@ -201,6 +201,9 @@ public partial class App : Application
         }
         #endregion
 
+        if (ConfigHelper.DoesConfigExist())
+            Profile = ConfigHelper.LoadConfig();
+
         m_window = new MainWindow();
 
         #region [Determining AppInstance activation kind]
@@ -242,9 +245,6 @@ public partial class App : Application
 
         #endregion
 
-        if (ConfigHelper.DoesConfigExist())
-            Profile = ConfigHelper.LoadConfig();
-
         AppWin = GetAppWindow(m_window);
 
         if (AppWin != null)
@@ -259,17 +259,18 @@ public partial class App : Application
                 
                 App.IsClosing = true;
                 
-                if (CoreToken is not null)
-                    CoreToken.Cancel();
+                CoreToken?.Cancel();
 
-                if (Profile is not null)
-                {
-                    Process proc = Process.GetCurrentProcess();
-                    Profile!.metrics = $"Process used {proc.PrivateMemorySize64 / 1024 / 1024}MB of memory and {proc.TotalProcessorTime.ToReadableString()} TotalProcessorTime on {Environment.ProcessorCount} possible cores.";
-                    Profile!.time = DateTime.Now;
-                    Profile!.version = GetCurrentAssemblyVersion();
-                    ConfigHelper.SaveConfig(Profile);
-                }
+                // This will be handled in the "MainWindowOnClosed" event.
+                //if (Profile is not null)
+                //{
+                //    Process proc = Process.GetCurrentProcess();
+                //    Profile!.metrics = $"Process used {proc.PrivateMemorySize64 / 1024 / 1024}MB of memory and {proc.TotalProcessorTime.ToReadableString()} TotalProcessorTime on {Environment.ProcessorCount} possible cores.";
+                //    Profile!.time = DateTime.Now;
+                //    Profile!.version = GetCurrentAssemblyVersion();
+                //    Profile!.firstRun = false;
+                //    ConfigHelper.SaveConfig(Profile);
+                //}
             };
 
             // Destroying is always called, but Closing is only called when the application is shutdown normally.
@@ -292,7 +293,7 @@ public partial class App : Application
                     {
                         // Update width and height for profile settings.
                         Profile!.windowWidth  = 473; // windowWidth = s.Size.Width;
-                        Profile!.windowHeight = 235; // windowHeight = s.Size.Height;
+                        Profile!.windowHeight = 205; // windowHeight = s.Size.Height;
                     }
                 }
 
@@ -353,6 +354,7 @@ public partial class App : Application
                 windowTop = 100,
                 windowWidth = m_width,
                 windowHeight = m_height,
+                transparency = false,
             };
             ConfigHelper.SaveConfig(Profile);
             AppWin?.Resize(new Windows.Graphics.SizeInt32(m_width, m_height));

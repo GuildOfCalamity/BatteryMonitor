@@ -10,6 +10,9 @@
     <None Update="App.xaml">
       <SubType>Designer</SubType>
     </None>
+    <Page Update="Dialogs\CloseAppDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="Controls\CompShadow.xaml">
       <SubType>Designer</SubType>
     </Page>

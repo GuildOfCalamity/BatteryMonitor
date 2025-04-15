@@ -67,6 +67,7 @@
     <None Remove="Assets\AppIcon.ico" />
     <None Remove="Assets\AppIcon.png" />
     <None Remove="Controls\CompShadow.xaml" />
+    <None Remove="Dialogs\CloseAppDialog.xaml" />
     <None Remove="MainPage.xaml" />
   </ItemGroup>
 
@@ -109,6 +110,9 @@
     <Content Update="Assets\Background4.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="Assets\Background5.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Page Update="MainPage.xaml">
@@ -117,6 +121,11 @@
   </ItemGroup>
   <ItemGroup>
     <Page Update="Controls\CompShadow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Dialogs\CloseAppDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>

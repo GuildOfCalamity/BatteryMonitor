@@ -16,6 +16,37 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.Resources>
+            <MenuFlyout
+                x:Name="TitlebarMenuFlyout"
+                x:FieldModifier="public"
+                Placement="BottomEdgeAlignedLeft">
+                <!--
+                    IsEnabled="{x:Bind local:App.Profile.transparency.Equals(x:False), Mode=OneWay}"
+                -->
+                <MenuFlyoutItem
+                    Click="MenuFlyoutItemOnClick"
+                    Tag="ActionTransparency"
+                    Text="Toggle Transparency">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="{StaticResource ActionCenter}" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator Width="200" />
+                <MenuFlyoutItem
+                    Click="MenuFlyoutItemOnClick"
+                    IsEnabled="True"
+                    Tag="ActionClose"
+                    Text="Close Application">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="{StaticResource PowerButton}" />
+                    </MenuFlyoutItem.Icon>
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F4" Modifiers="Menu" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </Grid.Resources>
 
         <!--#region [Custom TitleBar]-->
         <Grid
@@ -41,7 +72,7 @@
         <!--
             Insert a Frame/Page or some standard content.
         -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="MainGrid" Grid.Row="1">
             <local:MainPage />
         </Grid>
     </Grid>

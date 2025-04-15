@@ -129,24 +129,24 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         // Color.FromArgb(255, 255, 010, 005); //  Red
 
         brush100 = Extensions.CreateDiagonalGradientBrush(
-            Windows.UI.Color.FromArgb(255, 255, 160, 0), // Orange
-            Windows.UI.Color.FromArgb(255, 240, 226, 0), // Yellow
-            Windows.UI.Color.FromArgb(255, 20, 255, 0)); // Green
+            Windows.UI.Color.FromArgb(225, 255, 160, 0), // Orange
+            Windows.UI.Color.FromArgb(225, 240, 226, 0), // Yellow
+            Windows.UI.Color.FromArgb(225, 20, 255, 0)); // Green
 
         brush75 = Extensions.CreateDiagonalGradientBrush(
-            Windows.UI.Color.FromArgb(255, 255, 120, 0),  // Red-Orange
-            Windows.UI.Color.FromArgb(255, 255, 200, 0),  // Orange-Yellow
-            Windows.UI.Color.FromArgb(255, 155, 255, 0)); // Green-Yellow
+            Windows.UI.Color.FromArgb(225, 255, 120, 0),  // Red-Orange
+            Windows.UI.Color.FromArgb(225, 255, 200, 0),  // Orange-Yellow
+            Windows.UI.Color.FromArgb(225, 155, 255, 0)); // Green-Yellow
 
         brush50 = Extensions.CreateDiagonalGradientBrush(
-            Windows.UI.Color.FromArgb(255, 255, 50, 0),   // Red
-            Windows.UI.Color.FromArgb(255, 255, 160, 0),  // Orange
-            Windows.UI.Color.FromArgb(255, 240, 226, 0)); // Yellow
+            Windows.UI.Color.FromArgb(225, 255, 50, 0),   // Red
+            Windows.UI.Color.FromArgb(225, 255, 160, 0),  // Orange
+            Windows.UI.Color.FromArgb(225, 240, 226, 0)); // Yellow
 
         brush25 = Extensions.CreateDiagonalGradientBrush(
-            Windows.UI.Color.FromArgb(255, 255, 50, 0),   // Red-Orange
-            Windows.UI.Color.FromArgb(255, 255, 100, 0),  // Orange
-            Windows.UI.Color.FromArgb(255, 255, 150, 0)); // Yellow-Orange
+            Windows.UI.Color.FromArgb(225, 255, 50, 0),   // Red-Orange
+            Windows.UI.Color.FromArgb(225, 255, 100, 0),  // Orange
+            Windows.UI.Color.FromArgb(225, 255, 150, 0)); // Yellow-Orange
         #endregion
 
         // PowerGrid is not accessible in WinUI3/UWP apps targeting desktop. It's

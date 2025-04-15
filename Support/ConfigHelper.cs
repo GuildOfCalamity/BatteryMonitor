@@ -66,6 +66,10 @@ public class Config
     [JsonPropertyName("topmost")]
     public bool topmost = true;
 
+    [JsonInclude]
+    [JsonPropertyName("transparency")]
+    public bool transparency = false;
+
     public override string ToString() => JsonSerializer.Serialize<Config>(this, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 }
 
