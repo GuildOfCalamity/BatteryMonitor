@@ -27,7 +27,8 @@
                 <MenuFlyoutItem
                     Click="MenuFlyoutItemOnClick"
                     Tag="ActionTransparency"
-                    Text="Toggle Transparency">
+                    Text="Toggle Transparency"
+                    ToolTipService.ToolTip="Requires restart">
                     <MenuFlyoutItem.Icon>
                         <FontIcon Glyph="{StaticResource ActionCenter}" />
                     </MenuFlyoutItem.Icon>

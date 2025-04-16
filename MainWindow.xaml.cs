@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+
 using Microsoft.UI.Content;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -11,10 +11,11 @@ using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+
 using Windows.ApplicationModel.Activation;
 using Windows.Graphics;
+
 using WinRT.Interop;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BatteryMonitor;
 

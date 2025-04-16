@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -177,6 +178,23 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         //FillBrush = Extensions.CreateDiagonalGradientBrush(Windows.UI.Color.FromArgb(255, 255, 50, 0), Windows.UI.Color.FromArgb(255, 255, 160, 0), Windows.UI.Color.FromArgb(255, 240, 226, 0), Windows.UI.Color.FromArgb(255, 20, 255, 0));
         if (App.Profile != null && App.Profile.logging)
             Logger.SetLoggerFolderPath(AppDomain.CurrentDomain.BaseDirectory);
+
+        //if (App.CoreToken != null)
+        //{
+        //    StreamExtensionTest(
+        //        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources.pri"),
+        //        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources_stream.out"),
+        //        App.CoreToken.Token);
+        //}
+
+        "SomeTextToEncrypt".EncryptAsync("KEY").ContinueWith((t) =>
+        {
+            Debug.WriteLine($"Encrypted: {t.Result}");
+            t.Result.DecryptAsync("KEY").ContinueWith((t2) =>
+            {
+                Debug.WriteLine($"Decrypted: {t2.Result}");
+            });
+        });
     }
 
     void ToggleTimer(bool enabled)
@@ -237,20 +255,36 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                 return;
             }
 
-            //Debug.WriteLine($"📝 ChargeRate........: {Extensions.FormatMilliwatts(batteryReport.ChargeRateInMilliwatts)}        ");
-            //Debug.WriteLine($"📝 DesignCapacity....: {Extensions.FormatMilliwatts(batteryReport.DesignCapacityInMilliwattHours)}h      ");
-            //Debug.WriteLine($"📝 FullChargeCapacity: {Extensions.FormatMilliwatts(batteryReport.FullChargeCapacityInMilliwattHours)}h        ");
-            //Debug.WriteLine($"📝 RemainingCapacity.: {Extensions.FormatMilliwatts(batteryReport.RemainingCapacityInMilliwattHours)}h        ");
+            Debug.WriteLine($"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄");
+            Debug.WriteLine($"📝 ChargeRate........: {Extensions.FormatMilliwatts(batteryReport.ChargeRateInMilliwatts)}        ");
+            Debug.WriteLine($"📝 DesignCapacity....: {Extensions.FormatMilliwatts(batteryReport.DesignCapacityInMilliwattHours)}h      ");
+            Debug.WriteLine($"📝 FullChargeCapacity: {Extensions.FormatMilliwatts(batteryReport.FullChargeCapacityInMilliwattHours)}h        ");
+            Debug.WriteLine($"📝 RemainingCapacity.: {Extensions.FormatMilliwatts(batteryReport.RemainingCapacityInMilliwattHours)}h        ");
 
+            // Draining
             if (batteryReport.ChargeRateInMilliwatts != null && batteryReport.ChargeRateInMilliwatts < 0)
             {
                 Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.ChargeRateInMilliwatts)}";
-                if (App.Profile != null && batteryReport.ChargeRateInMilliwatts != null)
-                    App.Profile.lastRate = Math.Abs((int)batteryReport.ChargeRateInMilliwatts);
+                if (App.Profile != null)
+                    App.Profile.lastDrainRate = Math.Abs((int)batteryReport.ChargeRateInMilliwatts);
             }
-            else if (App.Profile != null && App.Profile.lastRate > 0) // show a time based on the last power drain
+            // Charging
+            else if (batteryReport.ChargeRateInMilliwatts != null && batteryReport.ChargeRateInMilliwatts > 0)
             {
-                Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastRate)}";
+                if (App.Profile != null)
+                {
+                    App.Profile.lastChargeRate = Math.Abs((int)batteryReport.ChargeRateInMilliwatts);
+                    Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastDrainRate)}";
+                }
+                else
+                {
+                    Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.ChargeRateInMilliwatts)}";
+                }
+            }
+            // Idle
+            else if (App.Profile != null && App.Profile.lastDrainRate > 0) // show a time based on the last power drain
+            {
+                Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastDrainRate)}";
             }
 
             DrawBattery(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.FullChargeCapacityInMilliwattHours, _workWidth);
@@ -286,7 +320,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             //OutlineHeight = 74;
             //OutlineWidth = fullLength;
 
-            FillHeight = 72;
+            FillHeight = 76;
             FillWidth = barLength;
 
             switch (percentage)
@@ -305,7 +339,24 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         }
     }
 
-    async Task InvokeOutputStreamWriteAsync(uint capacity = 256)
+    #region [Tests]
+    public void StreamExtensionTest(string inFileName, string outFileName, CancellationToken token)
+    {
+        ulong currentPosition = 0;
+        using (FileStream input = File.OpenRead(inFileName))
+        {
+            ulong TotalSize = Convert.ToUInt64(input.Length);
+            using (FileStream output = File.Open(outFileName, FileMode.OpenOrCreate, FileAccess.Write))
+            {
+                input.CopyTo(output, Convert.ToInt64(input.Length), token, (s, e) =>
+                {
+                    Debug.WriteLine($" Progress: " + Convert.ToString(Math.Ceiling((currentPosition + Convert.ToUInt64(e.ProgressPercentage / 100d * input.Length)) * 100d / TotalSize)));
+                });
+            }
+        }
+    }
+
+    public async Task InvokeOutputStreamWriteAsync(uint capacity = 256)
     {
         byte[] data = new byte[capacity];
         Random.Shared.NextBytes(data);
@@ -324,6 +375,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         await winRTStream.FlushAsync();
         winRTStream.Dispose();
     }
+    #endregion
 
 #if HAS_POWERGRID
     void TestPowerGridClass()

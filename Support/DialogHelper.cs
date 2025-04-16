@@ -58,7 +58,7 @@ public static class DialogHelper
         if (!isOpening && dialog is not null && element is not null)
         {
             isOpening = true;
-            // Ensure the code runs on the UI thread!
+            // Ensure the code runs on the UI thread
             bool enqueued = element.DispatcherQueue.TryEnqueue(() =>
             {
                 if (dialog.XamlRoot is null)
@@ -68,7 +68,7 @@ public static class DialogHelper
                 dialog.ShowAsync().AsTask().ContinueWith(t =>
                 {
                     if (t.Exception != null)
-                        App.DebugLog($"[ERROR] ShowAsyncAlt: {t.Exception.Message}");
+                        App.DebugLog($"[ERROR] ShowAsTaskAsync: {t.Exception.Message}");
                     else
                         dialogResult = t.Result;
 

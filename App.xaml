@@ -139,19 +139,19 @@
                 <GradientStop Offset="1.0" Color="{StaticResource AlphaShadow4}" />
             </LinearGradientBrush>
 
+            <LinearGradientBrush x:Key="GradientRingBrush" StartPoint="0,0.5" EndPoint="0.5,0.5">
+                <GradientStop Offset="0.0" Color="#3A84BC" />
+                <GradientStop Offset="0.1" Color="#F0F0F0" />
+                <GradientStop Offset="0.4" Color="#4FB2FF" />
+                <GradientStop Offset="1.0" Color="#0078FF" />
+            </LinearGradientBrush>
+
             <LinearGradientBrush x:Key="GradientPointBrush" StartPoint="0,0" EndPoint="0.25,1">
                 <GradientStop Offset="0.0" Color="#4FB2FF" />
                 <GradientStop Offset="0.06" Color="#F0F0F0" />
                 <GradientStop Offset="0.3" Color="#3A84BC" />
                 <GradientStop Offset="0.7" Color="#0026A3" />
                 <GradientStop Offset="1.0" Color="#000E3F" />
-            </LinearGradientBrush>
-
-            <LinearGradientBrush x:Key="GradientPointBrush2" StartPoint="0,0.5" EndPoint="0.5,0.5">
-                <GradientStop Offset="0.0" Color="#3A84BC" />
-                <GradientStop Offset="0.1" Color="#F0F0F0" />
-                <GradientStop Offset="0.4" Color="#4FB2FF" />
-                <GradientStop Offset="1.0" Color="#0078FF" />
             </LinearGradientBrush>
 
             <LinearGradientBrush x:Key="GradientPointBorderBrush" StartPoint="0,0" EndPoint="0.25,1">

@@ -152,6 +152,7 @@ public partial class App : Application
 
         StopWatch = ValueStopwatch.StartNew();
         BaseFolder = AppDomain.CurrentDomain.BaseDirectory;
+        CoreToken = new CancellationTokenSource();
 
         // Is there more than one of us?
         InstanceMutex = new Mutex(true, GetCurrentAssemblyName(), out bool isNew);
@@ -348,12 +349,12 @@ public partial class App : Application
         {
             Profile = new Config
             {
-                firstRun = true,
-                logging = false,
                 windowLeft = 100,
                 windowTop = 100,
                 windowWidth = m_width,
                 windowHeight = m_height,
+                firstRun = true,
+                logging = false,
                 transparency = false,
             };
             ConfigHelper.SaveConfig(Profile);

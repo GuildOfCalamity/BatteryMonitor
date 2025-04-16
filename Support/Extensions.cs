@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
@@ -43,6 +44,11 @@ namespace BatteryMonitor;
 
 public static class Extensions
 {
+    public static bool CheckIfValidPtr(this IntPtr Ptr)
+    {
+        return Ptr != IntPtr.Zero && Ptr.ToInt64() != -1;
+    }
+
     public static string FormatMilliwatts(int? milliwatts)
     {
         if (milliwatts == null)
@@ -2878,6 +2884,33 @@ public static class Extensions
     }
 
     /// <summary>
+    /// <code>
+    ///  var u1 = Extensions.GetNextUniquePath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources.pri"), false);
+    ///  var u2 = Extensions.GetNextUniquePath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets"), true);
+    /// </code>
+    /// </summary>
+    public static string GetNextUniquePath(this string path, bool isFolder = false)
+    {
+        string unique = path;
+        if (System.IO.File.Exists(path) || System.IO.Directory.Exists(path))
+        {
+            string Name = isFolder ? System.IO.Path.GetFileName(path) : System.IO.Path.GetFileNameWithoutExtension(path);
+            string Extension = isFolder ? string.Empty : System.IO.Path.GetExtension(path);
+            string DirectoryPath = System.IO.Path.GetDirectoryName(path) ?? "C:\\";
+            for (ushort Count = 1; System.IO.Directory.Exists(unique) || System.IO.File.Exists(unique); Count++)
+            {
+                // Check if matches "File(1).txt", "File(2).txt", "File(3).txt", etc.
+                if (System.Text.RegularExpressions.Regex.IsMatch(Name, @".*\(\d+\)"))
+                    unique = System.IO.Path.Combine(DirectoryPath, $"{Name.Substring(0, Name.LastIndexOf("(", StringComparison.InvariantCultureIgnoreCase))}({Count}){Extension}");
+                else
+                    unique = System.IO.Path.Combine(DirectoryPath, $"{Name}({Count}){Extension}");
+            }
+        }
+        return unique;
+    }
+
+
+    /// <summary>
     ///   Fetch all <see cref="ProcessModule"/>s in the current running process.
     /// </summary>
     /// <param name="excludeWinSys">if <c>true</c> any file path starting with %windir% will be excluded from the results</param>
@@ -3277,6 +3310,64 @@ public static class Extensions
     {
         var bytes = await SHA512.HashDataAsync(stream, cancellationToken);
         return Convert.ToHexString(bytes).ToLower();
+    }
+
+    /// <summary>
+    /// <code>
+    ///   ulong currentPosition = 0;
+    ///   using (FileStream input = File.OpenRead(inFileName))
+    ///   {
+    ///      ulong TotalSize = Convert.ToUInt64(input.Length);
+    ///      using (FileStream output = File.Open(outFileName, FileMode.OpenOrCreate, FileAccess.Write))
+    ///      {
+    ///         input.CopyTo(output, Convert.ToInt64(input.Length), token, (s, e) =>
+    ///         {
+    ///            Debug.WriteLine($" Progress: " + Convert.ToString(Math.Ceiling((currentPosition + Convert.ToUInt64(e.ProgressPercentage / 100d * input.Length)) * 100d / TotalSize)));
+    ///         });
+    ///      }
+    ///   }
+    /// </code>
+    /// </summary>
+    public static void CopyTo(this Stream From, Stream To, long Length = -1, CancellationToken CancelToken = default, ProgressChangedEventHandler? ProgressHandler = null)
+    {
+        if (From is null)
+            throw new ArgumentNullException(nameof(From), "Argument cannot be null");
+        if (To is null)
+            throw new ArgumentNullException(nameof(To), "Argument cannot be null");
+
+        try
+        {
+            long TotalBytesRead = 0;
+            long TotalBytesLength = Length > 0 ? Length : From.Length;
+            byte[] DataBuffer = new byte[4096];
+            int ProgressValue = 0;
+            int BytesRead = 0;
+
+            while ((BytesRead = From.Read(DataBuffer, 0, DataBuffer.Length)) > 0)
+            {
+                To.Write(DataBuffer, 0, BytesRead);
+                TotalBytesRead += BytesRead;
+                if (TotalBytesLength > 1024 * 1024)
+                {
+                    int LatestValue = Math.Min(100, Math.Max(0, Convert.ToInt32(Math.Ceiling(TotalBytesRead * 100d / TotalBytesLength))));
+                    if (LatestValue > ProgressValue)
+                    {
+                        ProgressValue = LatestValue;
+                        ProgressHandler?.Invoke(null, new ProgressChangedEventArgs(LatestValue, null));
+                    }
+                }
+                CancelToken.ThrowIfCancellationRequested();
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            From?.CopyTo(To);
+        }
+        finally
+        {
+            To?.Flush();
+            ProgressHandler?.Invoke(null, new ProgressChangedEventArgs(100, null));
+        }
     }
 
     #region [Spans]

@@ -14,8 +14,8 @@
 
 ## 📰 Description
 - A [WinUI 3](https://learn.microsoft.com/en-us/windows/apps/winui/winui3/) app which uses the [Windows.Devices.Power.Battery](https://learn.microsoft.com/en-us/uwp/api/windows.devices.power.battery?view=winrt-26100) library to render a battery meter.
+- There are six battery image backgrounds to choose from.
 - This source also contains plenty of tips and tricks for any [WinUI 3](https://learn.microsoft.com/en-us/windows/apps/winui/winui3/) application.
-- There are four battery image backgrounds to choose from.
 - Don't forget to give a ⭐ if you find any of my code helpful or educational.
  
 ## 📷 Screenshots

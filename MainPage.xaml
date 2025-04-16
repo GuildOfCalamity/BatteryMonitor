@@ -25,7 +25,7 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="3*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -64,7 +64,7 @@
                 HorizontalAlignment="Right"
                 FontSize="18"
                 FontWeight="Bold"
-                Foreground="{StaticResource PrimaryBrush}"
+                Foreground="{x:Bind Charge, Mode=OneWay, Converter={StaticResource AmountToBrush}}"
                 Text="{x:Bind Charge, Mode=OneWay}" />
 
             <ProgressRing
@@ -77,7 +77,7 @@
                 VerticalAlignment="Center"
                 Background="Transparent"
                 BorderThickness="0"
-                Foreground="{StaticResource GradientPointBrush2}"
+                Foreground="{StaticResource GradientRingBrush}"
                 IsActive="True"
                 Visibility="{x:Bind IsBusy, Mode=OneWay, Converter={StaticResource BooleanVisibility}, ConverterParameter=False}" />
 
@@ -97,7 +97,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Opacity="0.9"
-                Source="ms-appx:///Assets/Background1.png"
+                Source="ms-appx:///Assets/Background6.png"
                 Stretch="Uniform" />
 
             <!--<Rectangle
@@ -121,8 +121,8 @@
                 HorizontalAlignment="Left"
                 Fill="{x:Bind FillBrush, Mode=OneWay, FallbackValue=DodgerBlue}"
                 Opacity="0.85"
-                RadiusX="7"
-                RadiusY="7"
+                RadiusX="6"
+                RadiusY="6"
                 Stretch="Fill" />
 
             <ctrl:CompShadow

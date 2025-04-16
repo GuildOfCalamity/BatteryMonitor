@@ -55,8 +55,12 @@ public class Config
     public int windowHeight = 250;
 
     [JsonInclude]
-    [JsonPropertyName("lastrate")]
-    public int lastRate = 17000; // mW
+    [JsonPropertyName("lastdrainrate")]
+    public int lastDrainRate = 17000; // mW
+
+    [JsonInclude]
+    [JsonPropertyName("lastchargerate")]
+    public int lastChargeRate = 8000; // mW
 
     [JsonInclude]
     [JsonPropertyName("refresh")]
