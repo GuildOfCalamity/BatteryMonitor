@@ -67,6 +67,14 @@ public class Config
     public int refresh = 3000;  // ms
 
     [JsonInclude]
+    [JsonPropertyName("fillheight")]
+    public int fillHeight = 78;  // px
+
+    [JsonInclude]
+    [JsonPropertyName("backgroundimage")]
+    public string backgroundImage = "Background6.png";
+
+    [JsonInclude]
     [JsonPropertyName("topmost")]
     public bool topmost = true;
 

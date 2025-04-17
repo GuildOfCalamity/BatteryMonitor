@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
 {
     #region [Properties]
     ValueStopwatch _watch { get; set; }
+    List<string> _backgrounds = new List<string>();
     readonly DispatcherQueue _localDispatcher;
     readonly DispatcherQueueSynchronizationContext? _syncContext;
     DispatcherTimer? _tmrUpdate;
@@ -179,6 +181,11 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         if (App.Profile != null && App.Profile.logging)
             Logger.SetLoggerFolderPath(AppDomain.CurrentDomain.BaseDirectory);
 
+        if (App.Profile != null && App.Profile.transparency)
+            imgBattery.Opacity = 0.75d;
+        else
+            imgBattery.Opacity = 0.85d;
+
         //if (App.CoreToken != null)
         //{
         //    StreamExtensionTest(
@@ -188,13 +195,40 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         //}
 
         "SomeTextToEncrypt".EncryptAsync("KEY").ContinueWith((t) =>
-        {
-            Debug.WriteLine($"Encrypted: {t.Result}");
-            t.Result.DecryptAsync("KEY").ContinueWith((t2) =>
             {
-                Debug.WriteLine($"Decrypted: {t2.Result}");
+                if (!t.IsFaulted)
+                {
+                    Debug.WriteLine($"• Encrypted: {t.Result}");
+                    t.Result.DecryptAsync("KEY").ContinueWith((t2) =>
+                    {
+                        Debug.WriteLine($"• Decrypted: {t2.Result}");
+                    });
+                }
             });
-        });
+
+        // We could just directly set the user's background image name to the control, but this async method is fun to use.
+        Path.Combine(AppContext.BaseDirectory, "Assets").EnumerateFilesWithProgressAsync(searchPattern: "*.png", recursive: false, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
+            (s, e) => {
+                Debug.WriteLine($"• Found: {e.UserState} ({e.ProgressPercentage})");
+            }).ContinueWith((t) => {
+                if (t.IsFaulted)
+                    Debug.WriteLine($"⇒ EnumerateFiles(Faulted): {t.Exception?.GetBaseException().Message}");
+                else {
+                    _backgrounds = t.Result;
+                    if (App.Profile != null && !string.IsNullOrEmpty(App.Profile.backgroundImage))
+                    {
+                        var match = _backgrounds.Where(x => Regex.IsMatch(x, App.Profile.backgroundImage)).FirstOrDefault();
+                        //_backgrounds.RemoveAll(x => !x.Contains(App.Profile.backgroundImage));
+                        if (!string.IsNullOrEmpty(match))
+                        {
+                            _localDispatcher.TryEnqueue(() =>
+                            {
+                                imgBattery.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(match));
+                            });
+                        }
+                    }
+                }
+            }).ConfigureAwait(false);
     }
 
     void ToggleTimer(bool enabled)
@@ -320,7 +354,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             //OutlineHeight = 74;
             //OutlineWidth = fullLength;
 
-            FillHeight = 76;
+            FillHeight = App.Profile != null ? App.Profile.fillHeight : 78;
             FillWidth = barLength;
 
             switch (percentage)

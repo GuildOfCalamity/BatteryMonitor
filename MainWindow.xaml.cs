@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 using Microsoft.UI.Content;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -26,6 +27,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     ContentCoordinateConverter _coordinateConverter;
     OverlappedPresenter? _overlapPresenter;
     public event PropertyChangedEventHandler? PropertyChanged;
+    
     bool _isBusy = false;
     public bool IsBusy
     {
@@ -254,7 +256,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         gb.EndPoint = endPoint;
 
         // Create a sprite visual and assign the gradient brush.
-        var spriteVisual = Compositor.CreateSpriteVisual();
+        var spriteVisual = compositor.CreateSpriteVisual();
+        if (spriteVisual == null) { return; }
         spriteVisual.Brush = gb;
 
         // Set the size of the sprite visual to cover the entire window.

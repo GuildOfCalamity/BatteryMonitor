@@ -3312,8 +3312,45 @@ public static class Extensions
         return Convert.ToHexString(bytes).ToLower();
     }
 
-    /// <summary>
-    /// <code>
+    /// <summary><code>
+    ///  AppContext.BaseDirectory.EnumerateFilesWithProgressAsync(searchPattern: "*.dll", recursive: false, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
+    ///     (s, e) => {
+    ///        Debug.WriteLine($"• Found: {e.UserState}");
+    ///        Debug.WriteLine($"• Progress: {e.ProgressPercentage}");
+    ///     }).ContinueWith((t) => {
+    ///        if (t.IsFaulted)
+    ///           Debug.WriteLine($"⇒ EnumerateFilesWithProgressAsync(Faulted): {t.Exception?.GetBaseException().Message}");
+    ///        else
+    ///           Debug.WriteLine($"⇒ EnumerateFilesWithProgressAsync(Completed): {t.Result.Count} files");
+    ///  }).ConfigureAwait(false);
+    /// </code></summary>
+    public static async Task<List<string>> EnumerateFilesWithProgressAsync(this string rootPath, string searchPattern = "*.*", bool recursive = true, CancellationToken? cancellationToken = null, ProgressChangedEventHandler? progressHandler = null)
+    {
+        int count = 0;
+        var files = new List<string>();
+        await Task.Run(() =>
+        {
+            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(rootPath, searchPattern, searchOption))
+                {
+                    cancellationToken?.ThrowIfCancellationRequested();
+                    files.Add(file);
+                    count++;
+                    progressHandler?.Invoke(null, new ProgressChangedEventArgs(count, file));
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                progressHandler?.Invoke(null, new ProgressChangedEventArgs(-1, ex.Message));
+            }
+        });
+
+        return files;
+    }
+
+    /// <summary><code>
     ///   ulong currentPosition = 0;
     ///   using (FileStream input = File.OpenRead(inFileName))
     ///   {
@@ -3326,8 +3363,7 @@ public static class Extensions
     ///         });
     ///      }
     ///   }
-    /// </code>
-    /// </summary>
+    /// </code></summary>
     public static void CopyTo(this Stream From, Stream To, long Length = -1, CancellationToken CancelToken = default, ProgressChangedEventHandler? ProgressHandler = null)
     {
         if (From is null)
@@ -6604,5 +6640,6 @@ public static class Extensions
             Debug.WriteLine($"[INFO] File has no thumbnail associated '{file.Name}'");
         }
     }
+
     #endregion
 }

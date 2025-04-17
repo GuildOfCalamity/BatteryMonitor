@@ -93,11 +93,12 @@
             VerticalAlignment="Center">
 
             <Image
+                x:Name="imgBattery"
                 Margin="-10"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Opacity="0.9"
-                Source="ms-appx:///Assets/Background6.png"
+                Opacity="0.75"
+                Source="ms-appx:///Assets/Background5.png"
                 Stretch="Uniform" />
 
             <!--<Rectangle

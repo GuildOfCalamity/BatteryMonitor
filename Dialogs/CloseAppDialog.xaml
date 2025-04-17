@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:BatteryMonitor.Dialogs"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="root"
     BorderBrush="{StaticResource GradientBarBrush}"
     BorderThickness="3"
     CloseButtonText="Cancel"
@@ -47,7 +48,7 @@
             </Grid.ColumnDefinitions>
             <ctrl:CompShadow
                 Grid.Column="0"
-                Margin="0,4,0,0"
+                Margin="0,1,0,0"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 BlurRadius="1"

@@ -356,6 +356,8 @@ public partial class App : Application
                 firstRun = true,
                 logging = false,
                 transparency = false,
+                fillHeight = 78,
+                backgroundImage = "Background6.png",
             };
             ConfigHelper.SaveConfig(Profile);
             AppWin?.Resize(new Windows.Graphics.SizeInt32(m_width, m_height));
