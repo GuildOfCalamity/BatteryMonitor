@@ -243,4 +243,10 @@ internal static class Logger
     {
         return SpinWait.SpinUntil(() => BackgroundProcessThread.ThreadState.HasFlag(System.Threading.ThreadState.WaitSleepJoin), Math.Max(0, TimeoutMilliseconds));
     }
+
+    public static string SanitizeFileNameOrPath(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) { return string.Empty; }
+        return string.Join("_", fileName.Split(System.IO.Path.GetInvalidFileNameChars()));
+    }
 }

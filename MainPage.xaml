@@ -9,7 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid>
+    <Grid x:Name="root">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -122,8 +122,8 @@
                 HorizontalAlignment="Left"
                 Fill="{x:Bind FillBrush, Mode=OneWay, FallbackValue=DodgerBlue}"
                 Opacity="0.85"
-                RadiusX="6"
-                RadiusY="6"
+                RadiusX="{x:Bind CornerRadius, Mode=OneWay, FallbackValue=6}"
+                RadiusY="{x:Bind CornerRadius, Mode=OneWay, FallbackValue=6}"
                 Stretch="Fill" />
 
             <ctrl:CompShadow

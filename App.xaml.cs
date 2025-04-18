@@ -357,6 +357,7 @@ public partial class App : Application
                 logging = false,
                 transparency = false,
                 fillHeight = 78,
+                cornerRadius = 6d,
                 backgroundImage = "Background6.png",
             };
             ConfigHelper.SaveConfig(Profile);

@@ -71,6 +71,10 @@ public class Config
     public int fillHeight = 78;  // px
 
     [JsonInclude]
+    [JsonPropertyName("cornerradius")]
+    public double cornerRadius = 6;
+
+    [JsonInclude]
     [JsonPropertyName("backgroundimage")]
     public string backgroundImage = "Background6.png";
 

@@ -238,15 +238,15 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             App.Current.Resources.TryGetValue("GC4", out object clr4))
         {
             gradientStops.Insert(0, compositor.CreateColorGradientStop(0.0f, (Windows.UI.Color)clr1));
-            gradientStops.Insert(1, compositor.CreateColorGradientStop(0.3f, (Windows.UI.Color)clr2));
-            gradientStops.Insert(2, compositor.CreateColorGradientStop(0.6f, (Windows.UI.Color)clr3));
+            gradientStops.Insert(1, compositor.CreateColorGradientStop(0.4f, (Windows.UI.Color)clr2));
+            gradientStops.Insert(2, compositor.CreateColorGradientStop(0.7f, (Windows.UI.Color)clr3));
             gradientStops.Insert(3, compositor.CreateColorGradientStop(1.0f, (Windows.UI.Color)clr4));
         }
         else
         {
             gradientStops.Insert(0, compositor.CreateColorGradientStop(0.0f, Windows.UI.Color.FromArgb(55, 255, 0, 0)));   // Red
-            gradientStops.Insert(1, compositor.CreateColorGradientStop(0.3f, Windows.UI.Color.FromArgb(55, 255, 216, 0))); // Yellow
-            gradientStops.Insert(2, compositor.CreateColorGradientStop(0.6f, Windows.UI.Color.FromArgb(55, 0, 255, 0)));   // Green
+            gradientStops.Insert(1, compositor.CreateColorGradientStop(0.4f, Windows.UI.Color.FromArgb(55, 255, 216, 0))); // Yellow
+            gradientStops.Insert(2, compositor.CreateColorGradientStop(0.7f, Windows.UI.Color.FromArgb(55, 0, 255, 0)));   // Green
             gradientStops.Insert(3, compositor.CreateColorGradientStop(1.0f, Windows.UI.Color.FromArgb(55, 0, 0, 255)));   // Blue
         }
 

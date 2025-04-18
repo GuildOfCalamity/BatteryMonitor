@@ -3312,11 +3312,27 @@ public static class Extensions
         return Convert.ToHexString(bytes).ToLower();
     }
 
+    /// <summary>
+    /// Breaks a string into smaller strings of a specified size.
+    /// Can be useful when parsing large amounts of hex data.
+    /// </summary>
+    public static IEnumerable<string> SplitToMaxDataSize(this string str, int maxChunkSize = 8)
+    {
+        if (string.IsNullOrEmpty(str))
+        {
+            yield return string.Empty;
+        }
+
+        for (var i = 0; i < str.Length; i += maxChunkSize)
+        {
+            yield return str.Substring(i, Math.Min(maxChunkSize, str.Length - i));
+        }
+    }
+
     /// <summary><code>
-    ///  AppContext.BaseDirectory.EnumerateFilesWithProgressAsync(searchPattern: "*.dll", recursive: false, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
+    ///  AppContext.BaseDirectory.EnumerateFilesWithProgressAsync(searchPattern: "*.dll", recursive: false, CancellationToken.None,
     ///     (s, e) => {
-    ///        Debug.WriteLine($"• Found: {e.UserState}");
-    ///        Debug.WriteLine($"• Progress: {e.ProgressPercentage}");
+    ///        Debug.WriteLine($"• Found: {e.UserState}, Progress: {e.ProgressPercentage}");
     ///     }).ContinueWith((t) => {
     ///        if (t.IsFaulted)
     ///           Debug.WriteLine($"⇒ EnumerateFilesWithProgressAsync(Faulted): {t.Exception?.GetBaseException().Message}");

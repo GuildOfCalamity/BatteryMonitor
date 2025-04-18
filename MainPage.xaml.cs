@@ -73,7 +73,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         set { _outlineWidth = value; NotifyPropertyChanged(nameof(OutlineWidth)); }
     }
 
-    double _outlineHeight = 74;
+    double _outlineHeight = 78;
     public double OutlineHeight
     {
         get => _outlineHeight;
@@ -87,11 +87,18 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         set { _fillWidth = value; NotifyPropertyChanged(nameof(FillWidth)); }
     }
 
-    double _fillHeight = 72;
+    double _fillHeight = 76;
     public double FillHeight
     {
         get => _fillHeight;
         set { _fillHeight = value; NotifyPropertyChanged(nameof(FillHeight)); }
+    }
+
+    double _cornerRadius = 6;
+    public double CornerRadius
+    {
+        get => _cornerRadius;
+        set { _cornerRadius = value; NotifyPropertyChanged(nameof(CornerRadius)); }
     }
 
     Brush _fillBrush = new SolidColorBrush(Microsoft.UI.Colors.DodgerBlue);
@@ -160,16 +167,6 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             Debug.WriteLine("PowerGridForcast is not available");
     }
 
-    void MainPageOnUnloaded(object sender, RoutedEventArgs e)
-    {
-        ToggleTimer(false);
-        if (App.Profile != null && App.Profile.logging)
-        {
-            Logger.Log($"⏱️ Application instance ran for {_watch.GetElapsedFriendly()}", true);
-            Logger.ConfirmLogIsFlushed(2000);
-        }
-    }
-
     void MainPageOnLoaded(object sender, RoutedEventArgs e)
     {
         IsBusy = true;
@@ -206,10 +203,11 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                 }
             });
 
+        //var images = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets")
         // We could just directly set the user's background image name to the control, but this async method is fun to use.
-        Path.Combine(AppContext.BaseDirectory, "Assets").EnumerateFilesWithProgressAsync(searchPattern: "*.png", recursive: false, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
+        System.IO.Path.Combine(AppContext.BaseDirectory, "Assets").EnumerateFilesWithProgressAsync(searchPattern: "*.png", recursive: false, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
             (s, e) => {
-                Debug.WriteLine($"• Found: {e.UserState} ({e.ProgressPercentage})");
+                Debug.WriteLine($"• Found '{e.UserState}' ({e.ProgressPercentage})");
             }).ContinueWith((t) => {
                 if (t.IsFaulted)
                     Debug.WriteLine($"⇒ EnumerateFiles(Faulted): {t.Exception?.GetBaseException().Message}");
@@ -218,17 +216,23 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                     if (App.Profile != null && !string.IsNullOrEmpty(App.Profile.backgroundImage))
                     {
                         var match = _backgrounds.Where(x => Regex.IsMatch(x, App.Profile.backgroundImage)).FirstOrDefault();
-                        //_backgrounds.RemoveAll(x => !x.Contains(App.Profile.backgroundImage));
                         if (!string.IsNullOrEmpty(match))
                         {
-                            _localDispatcher.TryEnqueue(() =>
-                            {
-                                imgBattery.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(match));
-                            });
+                            _localDispatcher.TryEnqueue(() => { imgBattery.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(match)); });
                         }
                     }
                 }
             }).ConfigureAwait(false);
+    }
+
+    void MainPageOnUnloaded(object sender, RoutedEventArgs e)
+    {
+        ToggleTimer(false);
+        if (App.Profile != null && App.Profile.logging)
+        {
+            Logger.Log($"⏱️ Application instance ran for {_watch.GetElapsedFriendly()}", true);
+            Logger.ConfirmLogIsFlushed(2000);
+        }
     }
 
     void ToggleTimer(bool enabled)
@@ -354,6 +358,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             //OutlineHeight = 74;
             //OutlineWidth = fullLength;
 
+            CornerRadius = App.Profile != null ? App.Profile.cornerRadius : 6;
             FillHeight = App.Profile != null ? App.Profile.fillHeight : 78;
             FillWidth = barLength;
 
