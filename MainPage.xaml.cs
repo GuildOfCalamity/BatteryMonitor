@@ -223,6 +223,19 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                     }
                 }
             }).ConfigureAwait(false);
+
+        //AppContext.BaseDirectory.EnumerateFilesAndDirectoriesWithProgressAsync(recursive: true, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
+        //    (s, e) => {
+        //        Debug.WriteLine($"• Found '{e.UserState}' ({e.ProgressPercentage})");
+        //    }).ContinueWith((t) => {
+        //        if (t.IsFaulted)
+        //            Debug.WriteLine($"⇒ EnumerateDirectories(Faulted): {t.Exception?.GetBaseException().Message}");
+        //        else
+        //        {
+        //            foreach (var obj in t.Result)
+        //                Debug.WriteLine(Directory.Exists(obj) ? $" [FLDR]: '{obj}'" : $" [FILE]: '{obj}'");
+        //        }
+        //    }).ConfigureAwait(false);
     }
 
     void MainPageOnUnloaded(object sender, RoutedEventArgs e)

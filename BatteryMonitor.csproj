@@ -65,6 +65,7 @@
     <Content Remove="Assets\Screenshot3.png" />
     <Content Remove="Assets\Screenshot4.png" />
     <Content Remove="Assets\Screenshot5.png" />
+    <Content Remove="Assets\Screenshot6.png" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="Assets\AppIcon.ico" />
