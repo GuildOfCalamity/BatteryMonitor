@@ -183,13 +183,17 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         else
             imgBattery.Opacity = 0.85d;
 
-        //if (App.CoreToken != null)
-        //{
-        //    StreamExtensionTest(
-        //        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources.pri"),
-        //        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources_stream.out"),
-        //        App.CoreToken.Token);
-        //}
+        #region [Miscellaneous Tests]
+
+        if (App.CoreToken != null)
+        {
+            //StreamExtensionTest(
+            //    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources.pri"),
+            //    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources_stream.out"),
+            //    App.CoreToken.Token);
+
+            TestActionSequenceExtension(App.CoreToken.Token);
+        }
 
         "SomeTextToEncrypt".EncryptAsync("KEY").ContinueWith((t) =>
             {
@@ -236,6 +240,8 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         //                Debug.WriteLine(Directory.Exists(obj) ? $" [FLDR]: '{obj}'" : $" [FILE]: '{obj}'");
         //        }
         //    }).ConfigureAwait(false);
+        
+        #endregion
     }
 
     void MainPageOnUnloaded(object sender, RoutedEventArgs e)
@@ -392,6 +398,31 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     }
 
     #region [Tests]
+    public async void TestActionSequenceExtension(CancellationToken token)
+    {
+        List<Action> steps = new()
+        {
+            () => Debug.WriteLine("Step 1"),
+            () => throw new InvalidOperationException("Simulated failure at step 2"),
+            () => Debug.WriteLine("Step 3"),
+        };
+
+        ProgressChangedEventHandler progress = (s, e) =>
+        {
+            if (e.ProgressPercentage == -1)
+                Debug.WriteLine($"[ERROR] {e.UserState}");
+            else
+                Debug.WriteLine($"✅ Action #{e.ProgressPercentage} completed");
+        };
+
+        Action<Exception> errorHandler = ex =>
+        {
+            Debug.WriteLine($"[EXCEPTION] {ex.Message}");
+        };
+
+        await Extensions.InvokeActionsWithProgressAsync(steps, errorHandler, token, progress);
+    }
+
     public void StreamExtensionTest(string inFileName, string outFileName, CancellationToken token)
     {
         ulong currentPosition = 0;

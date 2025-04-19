@@ -3366,6 +3366,90 @@ public static class Extensions
         return files;
     }
 
+    public static async Task<List<string>> EnumerateDirectoriesWithProgressAsync(this string rootPath, bool recursive = true, CancellationToken? cancellationToken = null, ProgressChangedEventHandler? progressHandler = null)
+    {
+        int count = 0;
+        var directories = new List<string>();
+        await Task.Run(() =>
+        {
+            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            try
+            {
+                foreach (var dir in Directory.EnumerateDirectories(rootPath, "*", searchOption))
+                {
+                    cancellationToken?.ThrowIfCancellationRequested();
+                    directories.Add(dir);
+                    count++;
+                    progressHandler?.Invoke(null, new ProgressChangedEventArgs(count, dir));
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                progressHandler?.Invoke(null, new ProgressChangedEventArgs(-1, ex.Message));
+            }
+        });
+
+        return directories;
+    }
+
+    public static async Task<List<string>> EnumerateFilesAndDirectoriesWithProgressAsync(this string rootPath, bool recursive = true, CancellationToken? cancellationToken = null, ProgressChangedEventHandler? progressHandler = null)
+    {
+        int count = 0;
+        var directories = new List<string>();
+        await Task.Run(() =>
+        {
+            var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            try
+            {
+                foreach (var dir in Directory.EnumerateFileSystemEntries(rootPath, "*", searchOption))
+                {
+                    cancellationToken?.ThrowIfCancellationRequested();
+                    directories.Add(dir);
+                    count++;
+                    progressHandler?.Invoke(null, new ProgressChangedEventArgs(count, dir));
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                progressHandler?.Invoke(null, new ProgressChangedEventArgs(-1, ex.Message));
+            }
+        });
+
+        return directories;
+    }
+
+    public static async Task InvokeActionsWithProgressAsync(List<Action> actions, Action<Exception>? onException = null, CancellationToken ? cancellationToken = null,  ProgressChangedEventHandler? progressHandler = null)
+    {
+        if (actions is null || actions.Count == 0)
+            return;
+
+        await Task.Run(() =>
+        {
+            int count = 0;
+            try
+            {
+                foreach (var action in actions)
+                {
+                    cancellationToken?.ThrowIfCancellationRequested();
+                    try
+                    {
+                        action?.Invoke();
+                        count++;
+                        progressHandler?.Invoke(null, new ProgressChangedEventArgs(count, action));
+                    }
+                    catch (Exception ex)
+                    {
+                        onException?.Invoke(ex);
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is OperationCanceledException)
+            {
+                progressHandler?.Invoke(null, new ProgressChangedEventArgs(-1, ex.Message));
+            }
+        });
+    }
+
     /// <summary><code>
     ///   ulong currentPosition = 0;
     ///   using (FileStream input = File.OpenRead(inFileName))
