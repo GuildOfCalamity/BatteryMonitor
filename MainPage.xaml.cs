@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -308,7 +309,9 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             {
                 Charge = "Not Present";
                 Remain = "⚠️ N/A (simulation)";
-                DrawBattery(Random.Shared.Next(1, 49000), 50000, _workWidth);
+                if (tbStatus.Visibility == Visibility.Visible)
+                    tbStatus.Visibility = Visibility.Collapsed;
+                DrawBattery(Random.Shared.Next(1, 49000), 50000, _workWidth, true);
                 return;
             }
 
@@ -344,7 +347,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                 Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastDrainRate)}";
             }
 
-            DrawBattery(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.FullChargeCapacityInMilliwattHours, _workWidth);
+            DrawBattery(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.FullChargeCapacityInMilliwattHours, _workWidth, false);
         }
         catch (Exception ex)
         {
@@ -359,7 +362,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
     /// <summary>
     /// Calculates the bar fill and charge rate for our <see cref="Windows.Devices.Power.Battery.AggregateBattery"/>.
     /// </summary>
-    void DrawBattery(int? currentValue, int? maxValue, int fullLength)
+    void DrawBattery(int? currentValue, int? maxValue, int fullLength, bool simulate)
     {
         if (currentValue == null || maxValue == null)
             return;
@@ -379,7 +382,10 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
 
             CornerRadius = App.Profile != null ? App.Profile.cornerRadius : 6;
             FillHeight = App.Profile != null ? App.Profile.fillHeight : 78;
-            FillWidth = barLength;
+            if (simulate)
+                AnimateWidth(rectFill, FillWidth, barLength, 0.125d);
+            else
+                FillWidth = barLength;
 
             switch (percentage)
             {
@@ -390,11 +396,55 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
             }
 
             // You could add an event here when the level drops too low to automatically shutdown the system.
+
         }
         catch (Exception ex)
         {
             Logger.Log(ex);
         }
+    }
+
+    void AnimateWidth(FrameworkElement element, double from, double to, double durationSeconds)
+    {
+        const int frameRate = 50;
+        int totalFrames = (int)(durationSeconds * frameRate);
+        int currentFrame = 0;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / frameRate) };
+        timer.Tick += (s, e) =>
+        {
+            if (App.IsClosing)
+            {
+                ((DispatcherTimer)s!).Stop();
+                return;
+            }
+            currentFrame++;
+            double t = (double)currentFrame / totalFrames;
+            element.Width = Extensions.Lerp(from, to, t);
+            if (currentFrame >= totalFrames)
+            {
+                element.Width = to;
+                ((DispatcherTimer)s!).Stop();
+                FillWidth = to;
+            }
+        };
+        timer.Start();
+    }
+
+    async Task AnimateWidthAsync(FrameworkElement element, double from, double to, double durationSeconds)
+    {
+        const int frameRate = 50;
+        int frames = (int)(durationSeconds * frameRate);
+        double interval = durationSeconds / frames;
+        for (int i = 1; i <= frames; i++)
+        {
+            if (App.IsClosing) { return; }
+            double t = (double)i / frames;
+            double width = Extensions.Lerp(from, to, t);
+            element.Width = width;
+            FillWidth = to;
+            await Task.Delay(TimeSpan.FromSeconds(interval));
+        }
+        element.Width = to;
     }
 
     #region [Tests]

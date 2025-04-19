@@ -127,6 +127,7 @@
                 Stretch="Fill" />
 
             <ctrl:CompShadow
+                x:Name="tbStatus"
                 Margin="-18,0,0,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
