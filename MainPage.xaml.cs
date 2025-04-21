@@ -6,7 +6,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -184,30 +184,7 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
         else
             imgBattery.Opacity = 0.85d;
 
-        #region [Miscellaneous Tests]
-
-        if (App.CoreToken != null)
-        {
-            //StreamExtensionTest(
-            //    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources.pri"),
-            //    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources_stream.out"),
-            //    App.CoreToken.Token);
-
-            TestActionSequenceExtension(App.CoreToken.Token);
-        }
-
-        "SomeTextToEncrypt".EncryptAsync("KEY").ContinueWith((t) =>
-            {
-                if (!t.IsFaulted)
-                {
-                    Debug.WriteLine($"• Encrypted: {t.Result}");
-                    t.Result.DecryptAsync("KEY").ContinueWith((t2) =>
-                    {
-                        Debug.WriteLine($"• Decrypted: {t2.Result}");
-                    });
-                }
-            });
-
+        #region [Asset Load]
         //var images = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets")
         // We could just directly set the user's background image name to the control, but this async method is fun to use.
         System.IO.Path.Combine(AppContext.BaseDirectory, "Assets").EnumerateFilesWithProgressAsync(searchPattern: "*.png", recursive: false, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
@@ -228,20 +205,6 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                     }
                 }
             }).ConfigureAwait(false);
-
-        //AppContext.BaseDirectory.EnumerateFilesAndDirectoriesWithProgressAsync(recursive: true, App.CoreToken != null ? App.CoreToken.Token : CancellationToken.None,
-        //    (s, e) => {
-        //        Debug.WriteLine($"• Found '{e.UserState}' ({e.ProgressPercentage})");
-        //    }).ContinueWith((t) => {
-        //        if (t.IsFaulted)
-        //            Debug.WriteLine($"⇒ EnumerateDirectories(Faulted): {t.Exception?.GetBaseException().Message}");
-        //        else
-        //        {
-        //            foreach (var obj in t.Result)
-        //                Debug.WriteLine(Directory.Exists(obj) ? $" [FLDR]: '{obj}'" : $" [FILE]: '{obj}'");
-        //        }
-        //    }).ConfigureAwait(false);
-        
         #endregion
     }
 
@@ -342,9 +305,12 @@ public sealed partial class MainPage : Page, INotifyPropertyChanged
                 }
             }
             // Idle
-            else if (App.Profile != null && App.Profile.lastDrainRate > 0) // show a time based on the last power drain
+            else if (App.Profile != null) // show a time based on the last power drain
             {
-                Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastDrainRate)}";
+                if (App.Profile.lastChargeRate > App.Profile.lastDrainRate)
+                    Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastChargeRate)}";
+                else
+                    Remain = $"⌛ {Extensions.MilliwattHoursToMinutes(batteryReport.RemainingCapacityInMilliwattHours, App.Profile.lastDrainRate)}";
             }
 
             DrawBattery(batteryReport.RemainingCapacityInMilliwattHours, batteryReport.FullChargeCapacityInMilliwattHours, _workWidth, false);
